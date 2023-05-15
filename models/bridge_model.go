@@ -61,17 +61,16 @@ const EmptyEvent = 501
 
 // cross detail for each transaction
 type CrossInfo struct {
-	Id             int    `json:"id" gorm:"primary_key"`
-	SourceChain    int64  `json:"chain_id" gorm:"index"`
-	Hash           string `json:"hash" binding:"required" gorm:"unique"`
-	Asset          string `json:"asset" gorm:"type:char(42)"`
-	From           string `json:"from" gorm:"type:char(42)"`
-	TargetChain    int64  `json:"to_chain_id" gorm:""`
-	TargetContract string `json:"target_contract" gorm:"type:char(66)"`
-	UserNonce      int64  `json:"user_nonce" gorm:""`
-	BlockNumber    uint64 `json:"block_number"`
+	Id             int        `json:"id" gorm:"primary_key"`
+	SourceChain    int64      `json:"chain_id" gorm:"index"`
+	Hash           string     `json:"hash" binding:"required" gorm:"unique"`
+	Asset          string     `json:"asset" gorm:"type:char(42)"`
+	From           string     `json:"from" gorm:"type:char(42)"`
+	TargetChain    int64      `json:"to_chain_id" gorm:""`
+	TargetContract string     `json:"target_contract" gorm:"type:char(66)"`
+	UserNonce      int64      `json:"user_nonce" gorm:""`
+	BlockNumber    uint64     `json:"block_number"`
 	BlockTime      *time.Time `json:"block_time,string,omitempty"`
-	//UpdatedAt      *time.Time `json:"updated_at,string,omitempty"`
 }
 type CrossItem struct {
 	Id          int    `json:"id" gorm:"primary_key"`
@@ -79,6 +78,4 @@ type CrossItem struct {
 	TokenId     string `json:"token_id" binding:"required" gorm:"type:varchar(66)"`
 	Amount      string `json:"amount"  binding:"required" gorm:"type:varchar(66)"`
 	Uri         string `json:"uri"  binding:"required" gorm:"type:longtext"`
-	//CreatedAt   *time.Time `json:"created_at,string,omitempty"`
-	//UpdatedAt   *time.Time `json:"updated_at,string,omitempty"`
 }
