@@ -13,8 +13,7 @@ var (
 
 func Init() {
 	config := mysql.MustNewConfigFromViper()
-	//db := config.MustOpenOrCreate(migrationModels...)
-	db := config.MustOpenOrCreate()
+	db := config.MustOpenOrCreate(migrationModels...)
 
 	DB = db
 	models.SetDB(DB)
