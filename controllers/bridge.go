@@ -5,25 +5,20 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/infra/evm"
 	"github.com/tree-graph/bridge-service/models"
-	"net/http"
 )
 
-type BridgeController struct{}
-
-func (ctrl *BridgeController) CrossRequest(ctx *gin.Context) {
+func CrossRequest(ctx *gin.Context) (interface{}, error) {
 	bean := new(models.CrossRequest)
 
 	err := ctx.ShouldBindJSON(&bean)
 	if err != nil {
 		logrus.Errorf("bind json error: %v", err)
-		SendError(ctx, 400, err.Error())
-		return
+		return nil, err
 	}
 	_, err = evm.AddRequest(bean.ChainId, bean.Hash)
 	if err != nil {
 		logrus.Errorf("save cross request hash error: %v", err)
-		SendError(ctx, 400, err.Error())
-		return
+		return nil, err
 	}
-	ctx.JSON(http.StatusOK, &bean)
+	return bean, nil
 }
