@@ -15,9 +15,9 @@ func SetDB(db *gorm.DB) {
 
 // save user's request
 type CrossRequest struct {
-	Id        int        `json:"id" gorm:"primary_key"`
-	ChainId   int64      `json:"chain_id" gorm:"index"`
-	Hash      string     `json:"hash" binding:"required" gorm:"unique"`
+	Id        int        `json:"id" gorm:"primary_key,autoIncrement"`
+	ChainId   int64      `json:"chain_id" gorm:"index,not null"`
+	Hash      string     `json:"hash" binding:"required" gorm:"unique,not null"`
 	Result    string     `json:"result" binding:"required" gorm:"varchar(255) default ''"`
 	Status    int        `json:"status" gorm:""`
 	CreatedAt *time.Time `json:"created_at,string,omitempty"`
@@ -37,15 +37,11 @@ type Config struct {
 	Content string `json:"content" binding:"required"`
 }
 
-func (e *Config) TableName() string {
-	return "config"
-}
-
 // chain config
 type Chain struct {
 	Id        int64      `json:"id" gorm:"primary_key"`
-	Name      string     `json:"hash" binding:"required" gorm:"unique"`
-	Rpc       string     `json:"rpc"  binding:"required" gorm:"unique"`
+	Name      string     `json:"hash" binding:"required" gorm:"unique,not null"`
+	Rpc       string     `json:"rpc"  binding:"required" gorm:"not null"`
 	CreatedAt *time.Time `json:"created_at,string,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,string,omitempty"`
 }
@@ -59,22 +55,24 @@ func GetChain(id int64) (Chain, error) {
 const InvalidHash = 500
 const EmptyEvent = 501
 
-// cross detail for each transaction
+// Cross detail for each transaction. Corresponds to CrossEvent in the contract.
 type CrossInfo struct {
-	Id             int        `json:"id" gorm:"primary_key"`
-	SourceChain    int64      `json:"chain_id" gorm:"index"`
-	Hash           string     `json:"hash" binding:"required" gorm:"unique"`
-	Asset          string     `json:"asset" gorm:"type:char(42)"`
-	From           string     `json:"from" gorm:"type:char(42)"`
-	TargetChain    int64      `json:"to_chain_id" gorm:""`
-	TargetContract string     `json:"target_contract" gorm:"type:char(66)"`
-	UserNonce      int64      `json:"user_nonce" gorm:""`
-	BlockNumber    uint64     `json:"block_number"`
-	BlockTime      *time.Time `json:"block_time,string,omitempty"`
+	Id             int        `json:"id" gorm:"primary_key,autoIncrement"`
+	SourceChain    int64      `json:"chain_id" gorm:"index,not null"`
+	TxnHash        string     `json:"txn_hash" binding:"required" gorm:"unique,not null"`
+	Asset          string     `json:"asset" gorm:"type:char(42),not null"`
+	From           string     `json:"from" gorm:"type:char(42),not null"`
+	TargetChain    int64      `json:"to_chain_id" gorm:"not null"`
+	TargetContract string     `json:"target_contract" gorm:"type:char(66),not null"`
+	UserNonce      int64      `json:"user_nonce" gorm:"not null"`
+	BlockNumber    uint64     `json:"block_number" gorm:"not null"`
+	BlockTime      *time.Time `json:"block_time,string,omitempty" gorm:"not null"`
 }
+
+// There is batch style crossing request, this table keeps track of each token for each request.
 type CrossItem struct {
-	Id          int    `json:"id" gorm:"primary_key"`
-	CrossInfoId int    `json:"cross_info_id" gorm:""`
+	Id          int    `json:"id" gorm:"primary_key,autoIncrement"`
+	CrossInfoId int    `json:"cross_info_id" gorm:"not null"`
 	TokenId     string `json:"token_id" binding:"required" gorm:"type:varchar(66)"`
 	Amount      string `json:"amount"  binding:"required" gorm:"type:varchar(66)"`
 	Uri         string `json:"uri"  binding:"required" gorm:"type:longtext"`
