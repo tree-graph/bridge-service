@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/infra/blockchain"
@@ -12,12 +13,14 @@ func CrossRequest(ctx *gin.Context) (interface{}, error) {
 
 	err := ctx.ShouldBindJSON(&bean)
 	if err != nil {
-		logrus.WithError(err).Error("bind json error")
+		logrus.WithError(err).Debug("bind json error")
 		return nil, err
 	}
 	_, err = blockchain.AddCrossRequest(bean.ChainId, bean.Hash)
 	if err != nil {
-		logrus.WithError(err).Error("save cross request hash error")
+		logrus.WithFields(logrus.Fields{
+			"bean": fmt.Sprintf("%+v", bean),
+		}).WithError(err).Error("save cross request hash error")
 		return nil, err
 	}
 	return bean, nil

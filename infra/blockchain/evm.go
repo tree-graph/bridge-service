@@ -4,18 +4,24 @@ import (
 	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/helpers"
 	"github.com/tree-graph/bridge-service/infra/contracts/vault"
 	"github.com/tree-graph/bridge-service/infra/database"
 	"github.com/tree-graph/bridge-service/models"
+	"math/big"
 	"sync"
 )
 
 type EvmHandler struct {
 	Client  *ethclient.Client
 	ChainId int64
+}
+
+func (evm EvmHandler) BlockByNumber(n *big.Int) (*types.Block, error) {
+	return evm.Client.BlockByNumber(context.Background(), n)
 }
 
 var clients map[int64]EvmHandler
@@ -26,6 +32,9 @@ func SetupEvmEnv() {
 	clients = make(map[int64]EvmHandler)
 }
 func GetEvmHandler(chainId int64) EvmHandler {
+	clientsMapLock.Lock()
+	defer clientsMapLock.Unlock()
+
 	return clients[chainId]
 }
 func AddChainClient(chain models.Chain) {
