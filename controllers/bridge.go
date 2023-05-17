@@ -12,12 +12,12 @@ func CrossRequest(ctx *gin.Context) (interface{}, error) {
 
 	err := ctx.ShouldBindJSON(&bean)
 	if err != nil {
-		logrus.Errorf("bind json error: %v", err)
+		logrus.WithError(err).Error("bind json error")
 		return nil, err
 	}
 	_, err = blockchain.AddCrossRequest(bean.ChainId, bean.Hash)
 	if err != nil {
-		logrus.Errorf("save cross request hash error: %v", err)
+		logrus.WithError(err).Error("save cross request hash error")
 		return nil, err
 	}
 	return bean, nil
