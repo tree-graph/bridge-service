@@ -6,6 +6,6 @@ import (
 
 func CheckFatalError(msg string, err error) {
 	if err != nil {
-		logrus.Fatalln(msg, err.Error())
+		logrus.WithError(err).Fatalln(msg)
 	}
 }

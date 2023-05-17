@@ -21,12 +21,12 @@ var addReqCmd = &cobra.Command{
 
 		database.Init()
 		chain, err := models.GetChain(chainId)
-		helpers.CheckFatalError("get chain fail:", err)
+		helpers.CheckFatalError("get chain fail", err)
 
 		blockchain.AddChainClient(chain)
 
 		_, e := blockchain.AddCrossRequest(chainId, args[1])
-		helpers.CheckFatalError("add request fail:", e)
+		helpers.CheckFatalError("add request fail", e)
 	},
 }
 

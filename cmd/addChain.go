@@ -26,9 +26,9 @@ func run(args []string) {
 		Id: id, Name: args[1], Rpc: args[2],
 	}
 	if err := database.GetDB().Create(&bean).Error; err != nil {
-		logrus.Errorf("config failed : %v \n", err.Error())
+		logrus.WithError(err).Error("config failed")
 	}
-	logrus.Println("created")
+	logrus.Info("created")
 }
 
 func init() {

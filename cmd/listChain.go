@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/tree-graph/bridge-service/infra/database"
@@ -15,10 +16,10 @@ var listChainCmd = &cobra.Command{
 		database.Init()
 		var chains []models.Chain
 		if err := database.DB.Find(&chains).Error; err != nil {
-			logrus.Println("list chain fail : ", err.Error())
+			logrus.WithError(err).Error("list chain fail")
 		}
 		for _, v := range chains {
-			logrus.Println(v.Id, v.Name, v.Rpc)
+			logrus.WithField("chain", fmt.Sprintf("%+v", v)).Info("list chain")
 		}
 	},
 }
