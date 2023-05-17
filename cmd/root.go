@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/Conflux-Chain/go-conflux-util/config"
 	"github.com/spf13/cobra"
+	"github.com/tree-graph/bridge-service/infra/blockchain"
 	"os"
 )
 
@@ -28,5 +29,6 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	blockchain.SetupEvmEnv()
 	config.MustInit("")
 }

@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"github.com/tree-graph/bridge-service/helpers"
+	"github.com/tree-graph/bridge-service/infra/blockchain"
 	"github.com/tree-graph/bridge-service/infra/database"
-	"github.com/tree-graph/bridge-service/infra/evm"
 	"github.com/tree-graph/bridge-service/models"
 	"strconv"
 )
@@ -21,12 +21,12 @@ var addReqCmd = &cobra.Command{
 
 		database.Init()
 		chain, err := models.GetChain(chainId)
-		helpers.CheckError("get chain fail:", err)
+		helpers.CheckFatalError("get chain fail:", err)
 
-		evm.AddChainClient(chain)
+		blockchain.AddChainClient(chain)
 
-		_, e := evm.AddRequest(chainId, args[1])
-		helpers.CheckError("add request fail:", e)
+		_, e := blockchain.AddCrossRequest(chainId, args[1])
+		helpers.CheckFatalError("add request fail:", e)
 	},
 }
 

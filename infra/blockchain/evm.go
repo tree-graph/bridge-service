@@ -10,6 +10,7 @@ import (
 	"github.com/tree-graph/bridge-service/infra/contracts/vault"
 	"github.com/tree-graph/bridge-service/infra/database"
 	"github.com/tree-graph/bridge-service/models"
+	"sync"
 )
 
 type EvmHandler struct {
@@ -18,7 +19,9 @@ type EvmHandler struct {
 }
 
 var clients map[int64]EvmHandler
+var clientsMapLock sync.Mutex
 
+// Call it at the application entry point
 func SetupEvmEnv() {
 	clients = make(map[int64]EvmHandler)
 }
@@ -26,6 +29,9 @@ func GetEvmHandler(chainId int64) EvmHandler {
 	return clients[chainId]
 }
 func AddChainClient(chain models.Chain) {
+	clientsMapLock.Lock()
+	defer clientsMapLock.Unlock()
+
 	client, err := ethclient.Dial(chain.Rpc)
 	helpers.CheckFatalError(
 		fmt.Sprintf("evm client fail %v %v %v", chain.Id, chain.Name, chain.Rpc),
