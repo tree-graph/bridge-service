@@ -16,9 +16,9 @@ func SetDB(db *gorm.DB) {
 // save user's request
 type CrossRequest struct {
 	Id        int        `json:"id" gorm:"primary_key,autoIncrement"`
-	ChainId   int64      `json:"chain_id" gorm:"index,not null"`
+	ChainId   int64      `json:"chain_id" binding:"required" gorm:"index,not null"`
 	Hash      string     `json:"hash" binding:"required" gorm:"unique,not null"`
-	Result    string     `json:"result" binding:"required" gorm:"varchar(255) default ''"`
+	Result    string     `json:"result" gorm:"varchar(255) default ''"`
 	Status    int        `json:"status" gorm:""`
 	CreatedAt *time.Time `json:"created_at,string,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,string,omitempty"`
