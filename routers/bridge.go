@@ -7,6 +7,6 @@ import (
 )
 
 func BridgeRoutes(route *gin.Engine) {
-	v1 := route.Group("/bridge")
-	v1.POST("crossRequest", api.Wrap(controllers.CrossRequest))
+	bridgeRoute := route.Group("/bridge")
+	bridgeRoute.POST("crossRequest", api.Wrap(controllers.CrossRequest))
 }
