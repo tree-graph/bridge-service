@@ -2,10 +2,12 @@ package controllers
 
 import (
 	"fmt"
+	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/infra/blockchain"
 	"github.com/tree-graph/bridge-service/models"
+	"strings"
 )
 
 func CrossRequest(ctx *gin.Context) (interface{}, error) {
@@ -18,6 +20,9 @@ func CrossRequest(ctx *gin.Context) (interface{}, error) {
 	}
 	_, err = blockchain.AddCrossRequest(bean.ChainId, bean.Hash)
 	if err != nil {
+		if strings.HasPrefix(err.Error(), "Error 1062: Duplicate entry") {
+			return nil, api.NewBusinessError(models.DuplicateEntryError, err.Error(), "")
+		}
 		logrus.WithFields(logrus.Fields{
 			"bean": fmt.Sprintf("%+v", bean),
 		}).WithError(err).Error("save cross request hash error")

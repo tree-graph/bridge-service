@@ -3,6 +3,7 @@ package blockchain
 import (
 	"context"
 	"fmt"
+	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -20,6 +21,9 @@ type EvmHandler struct {
 	ChainId int64
 }
 
+func (evm EvmHandler) TransactionByHash(hash string) (*types.Transaction, bool, error) {
+	return evm.Client.TransactionByHash(context.Background(), common.HexToHash(hash))
+}
 func (evm EvmHandler) BlockByNumber(n *big.Int) (*types.Block, error) {
 	return evm.Client.BlockByNumber(context.Background(), n)
 }
@@ -49,6 +53,9 @@ func AddChainClient(chain models.Chain) {
 		Client:  client,
 		ChainId: chain.Id,
 	}
+	logrus.WithFields(logrus.Fields{
+		"id": chain.Id, "name": chain.Name, "rpc": chain.Rpc,
+	}).Info("chain added")
 }
 func AddCrossRequest(chainId int64, txHash string) (*models.CrossRequest, error) {
 	evm, ok := clients[chainId]
@@ -56,8 +63,8 @@ func AddCrossRequest(chainId int64, txHash string) (*models.CrossRequest, error)
 		return nil, fmt.Errorf("chain not found: %v", chainId)
 	}
 
-	if _, _, err := evm.Client.TransactionByHash(context.Background(), common.HexToHash(txHash)); err != nil {
-		return nil, fmt.Errorf("TransactionByHash error: [%v], [%v]", txHash, err.Error())
+	if _, _, err := evm.TransactionByHash(txHash); err != nil {
+		return nil, api.ErrValidation(fmt.Errorf("TransactionByHash error: hash [%v], error [%v]", txHash, err.Error()))
 	}
 
 	var bean = models.CrossRequest{ChainId: chainId, Hash: txHash}

@@ -46,24 +46,28 @@ type Chain struct {
 	UpdatedAt *time.Time `json:"updated_at,string,omitempty"`
 }
 
+const HardhatLocalChain = 31337
+
 func GetChain(id int64) (Chain, error) {
 	var bean Chain
 	err := DB.Where("id=?", id).Take(&bean).Error
 	return bean, err
 }
 
+const DuplicateEntryError = 1062 // mysql use this code
+const TxNotFound = 404
 const InvalidHash = 500
 const EmptyEvent = 501
 
 // Cross detail for each transaction. Corresponds to CrossEvent in the contract.
 type CrossInfo struct {
 	Id             int        `json:"id" gorm:"primary_key,autoIncrement"`
-	SourceChain    int64      `json:"chain_id" gorm:"index,not null"`
+	SourceChain    int64      `json:"chain_id" gorm:"index, not null"`
 	TxnHash        string     `json:"txn_hash" binding:"required" gorm:"unique,not null"`
-	Asset          string     `json:"asset" gorm:"type:char(42),not null"`
-	From           string     `json:"from" gorm:"type:char(42),not null"`
+	Asset          string     `json:"asset" gorm:"type:char(42) not null"`
+	From           string     `json:"from" gorm:"type:char(42) not null"`
 	TargetChain    int64      `json:"to_chain_id" gorm:"not null"`
-	TargetContract string     `json:"target_contract" gorm:"type:char(66),not null"`
+	TargetContract string     `json:"target_contract" gorm:"type:char(66) not null"`
 	UserNonce      int64      `json:"user_nonce" gorm:"not null"`
 	BlockNumber    uint64     `json:"block_number" gorm:"not null"`
 	BlockTime      *time.Time `json:"block_time,string,omitempty" gorm:"not null"`

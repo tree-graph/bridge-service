@@ -4,6 +4,7 @@ import (
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/spf13/cobra"
 	"github.com/tree-graph/bridge-service/infra/database"
+	"github.com/tree-graph/bridge-service/infra/worker"
 	"github.com/tree-graph/bridge-service/routers"
 )
 
@@ -18,7 +19,7 @@ var serverCmd = &cobra.Command{
 
 func main() {
 	database.Init()
-
+	worker.SetupChains()
 	api.MustServeFromViper(routers.BridgeRoutes)
 
 }
