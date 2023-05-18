@@ -19,14 +19,14 @@ func CrossRequest(ctx *gin.Context) (interface{}, error) {
 		return nil, err
 	}
 	_, err = blockchain.AddCrossRequest(bean.ChainId, bean.Hash)
-	if err != nil {
-		if strings.HasPrefix(err.Error(), "Error 1062: Duplicate entry") {
-			return nil, api.NewBusinessError(models.DuplicateEntryError, err.Error(), "")
-		}
-		logrus.WithFields(logrus.Fields{
-			"bean": fmt.Sprintf("%+v", bean),
-		}).WithError(err).Error("save cross request hash error")
-		return nil, err
+	if err == nil {
+		return bean, nil
 	}
-	return bean, nil
+	if strings.HasPrefix(err.Error(), "Error 1062: Duplicate entry") {
+		return nil, api.NewBusinessError(DuplicateEntryError, err.Error(), "")
+	}
+	logrus.WithFields(logrus.Fields{
+		"bean": fmt.Sprintf("%+v", bean),
+	}).WithError(err).Error("save cross request hash error")
+	return nil, err
 }

@@ -46,15 +46,12 @@ type Chain struct {
 	UpdatedAt *time.Time `json:"updated_at,string,omitempty"`
 }
 
-const HardhatLocalChain = 31337
-
 func GetChain(id int64) (Chain, error) {
 	var bean Chain
 	err := DB.Where("id=?", id).Take(&bean).Error
 	return bean, err
 }
 
-const DuplicateEntryError = 1062 // mysql use this code
 const TxNotFound = 404
 const InvalidHash = 500
 const EmptyEvent = 501

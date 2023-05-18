@@ -2,8 +2,10 @@ package blockchain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Conflux-Chain/go-conflux-util/api"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -64,7 +66,10 @@ func AddCrossRequest(chainId int64, txHash string) (*models.CrossRequest, error)
 	}
 
 	if _, _, err := evm.TransactionByHash(txHash); err != nil {
-		return nil, api.ErrValidation(fmt.Errorf("TransactionByHash error: hash [%v], error [%v]", txHash, err.Error()))
+		if errors.Is(err, ethereum.NotFound) {
+			return nil, api.ErrValidation(fmt.Errorf("TransactionByHash error: hash [%v], error [%v]", txHash, err.Error()))
+		}
+		return nil, err
 	}
 
 	var bean = models.CrossRequest{ChainId: chainId, Hash: txHash}
