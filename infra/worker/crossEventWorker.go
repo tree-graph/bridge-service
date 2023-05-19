@@ -32,9 +32,10 @@ func RunAllCrossEventWorker() error {
 	logrus.Info("worker count ", len(workers))
 
 	for _, worker := range workers {
-		logrus.WithField("chain", worker.ChainId()).
-			WithField("vault addr", worker.vaultAddr).
-			Info("start chain")
+		logrus.WithFields(logrus.Fields{
+			"chain":      worker.ChainId(),
+			"vault addr": worker.vaultAddr,
+		}).Info("start chain")
 		go worker.Run()
 	}
 

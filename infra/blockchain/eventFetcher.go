@@ -45,15 +45,13 @@ func (fetcher EventFetcher) Fetch(block uint64) ([]*vault.VaultCrossRequest, err
 	}()
 
 	var logs []*vault.VaultCrossRequest
-	for {
-		if logIterator.Next() {
-			logs = append(logs, logIterator.Event)
-			continue
-		}
-		if err := logIterator.Error(); err != nil {
-			return nil, err
-		}
-		break
+	for logIterator.Next() {
+		logs = append(logs, logIterator.Event)
 	}
+
+	if err := logIterator.Error(); err != nil {
+		return nil, err
+	}
+
 	return logs, nil
 }
