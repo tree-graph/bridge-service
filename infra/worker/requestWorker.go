@@ -17,27 +17,38 @@ import (
 	"time"
 )
 
-func InitCrossReqWorker() {
+func InitCrossReqWorker(cursorName string) error {
+	if err := InitCursor(cursorName); err != nil {
+		return err
+	}
+	return SetupChains()
+}
+
+func InitCursor(cursorName string) error {
 	var config models.Config
-	err := database.DB.Where("name = ? ", models.CrossReqId).Take(&config).Error
+	err := database.DB.Where("name = ? ", cursorName).Take(&config).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		config.Name = models.CrossReqId
+		config.Name = cursorName
 		config.Content = "0"
-		if errCreate := database.DB.Create(&config); errCreate != nil {
-			logrus.WithError(err).Fatal("InitCrossReqWorker, create config fail")
+		if errCreate := database.DB.Create(&config).Error; errCreate != nil {
+			return errCreate
 		}
 	} else if err != nil {
-		logrus.WithError(err).Fatal("InitCrossReqWorker fail")
+		return err
 	}
-	SetupChains()
+	return nil
 }
-func SetupChains() {
+func SetupChains() error {
 	var chains []models.Chain
-	err := database.DB.Find(&chains).Error
-	helpers.CheckFatalError("load all chain", err)
-	for _, c := range chains {
-		blockchain.AddChainClient(c)
+	if err := database.DB.Find(&chains).Error; err != nil {
+		return err
 	}
+	for _, c := range chains {
+		if err := blockchain.AddChainClient(c); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // This worker fetches transaction receipt, parses logs, and saves crossing information to DB.
@@ -119,7 +130,7 @@ func runRequestWorker() (int, error) {
 		logEntry.WithError(blockErr).Error("fetch block fail")
 		return 1, nil
 	}
-	crossInfoArr, crossItemsArr := buildCrossInfo(block, parsedLogs, req)
+	crossInfoArr, crossItemsArr := BuildCrossInfo(block, parsedLogs, req.ChainId)
 	allItemCount := 0
 	allTxErr := database.DB.Transaction(func(tx *gorm.DB) error {
 		if infoE := tx.Create(crossInfoArr).Error; infoE != nil {
@@ -136,11 +147,10 @@ func runRequestWorker() (int, error) {
 		if itemE := tx.Create(allItems).Error; itemE != nil {
 			return itemE
 		}
-		configE := tx.Model(&config).Updates(&models.Config{
+		return tx.Model(&config).Updates(&models.Config{
 			Name:    models.CrossReqId,
 			Content: fmt.Sprint(req.Id),
 		}).Error
-		return configE
 	})
 	if allTxErr != nil {
 		logEntry.WithError(allTxErr).Error("save crossing info error")
@@ -162,23 +172,22 @@ func saveAsInvalidHash(req models.CrossRequest, config models.Config, result str
 		if err1 != nil {
 			return err1
 		}
-		err2 := tx.Model(&config).Updates(&models.Config{
+		return tx.Model(&config).Updates(&models.Config{
 			Name:    models.CrossReqId,
 			Content: fmt.Sprint(req.Id),
 		}).Error
-		return err2
 	})
 }
 
-func buildCrossInfo(block *types.Block, parseLogs []*vault.VaultCrossRequest, req models.CrossRequest) ([]models.CrossInfo, [][]models.CrossItem) {
+func BuildCrossInfo(block *types.Block, parseLogs []*vault.VaultCrossRequest, chainId int64) ([]models.CrossInfo, [][]models.CrossItem) {
 	blockTime := time.Unix(int64(block.Time()), 0)
 	var crossInfoArr []models.CrossInfo
 	var crossItemsArr = make([][]models.CrossItem, len(parseLogs))
 
 	for infoIndex, crossLog := range parseLogs {
 		var crossInfo = models.CrossInfo{
-			SourceChain:    req.ChainId,
-			TxnHash:        req.Hash,
+			SourceChain:    chainId,
+			TxnHash:        crossLog.Raw.TxHash.Hex(),
 			Asset:          crossLog.Asset.Hex(),
 			From:           crossLog.From.Hex(),
 			TargetChain:    crossLog.ToChainId.Int64(),

@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/sirupsen/logrus"
-	"github.com/tree-graph/bridge-service/helpers"
 	"github.com/tree-graph/bridge-service/infra/contracts/vault"
 	"github.com/tree-graph/bridge-service/infra/database"
 	"github.com/tree-graph/bridge-service/models"
@@ -43,14 +42,14 @@ func GetEvmHandler(chainId int64) EvmHandler {
 
 	return clients[chainId]
 }
-func AddChainClient(chain models.Chain) {
+func AddChainClient(chain models.Chain) error {
 	clientsMapLock.Lock()
 	defer clientsMapLock.Unlock()
 
 	client, err := ethclient.Dial(chain.Rpc)
-	helpers.CheckFatalError(
-		fmt.Sprintf("evm client fail %v %v %v", chain.Id, chain.Name, chain.Rpc),
-		err)
+	if err != nil {
+		return err
+	}
 	clients[chain.Id] = EvmHandler{
 		Client:  client,
 		ChainId: chain.Id,
@@ -58,6 +57,7 @@ func AddChainClient(chain models.Chain) {
 	logrus.WithFields(logrus.Fields{
 		"id": chain.Id, "name": chain.Name, "rpc": chain.Rpc,
 	}).Info("chain added")
+	return nil
 }
 func AddCrossRequest(chainId int64, txHash string) (*models.CrossRequest, error) {
 	evm, ok := clients[chainId]
