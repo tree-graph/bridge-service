@@ -12,6 +12,15 @@ var (
 	DBErr error
 )
 
+var migrationModels = []interface{}{
+	&models.CrossRequest{},
+	&models.Config{},
+	&models.Chain{},
+	&models.CrossInfo{},
+	&models.CrossItem{},
+	&models.ChainCursor{},
+}
+
 func Init() {
 	config := mysql.MustNewConfigFromViper()
 	db := config.MustOpenOrCreate()

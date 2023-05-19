@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/Conflux-Chain/go-conflux-util/api"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/tree-graph/bridge-service/infra/database"
 	"github.com/tree-graph/bridge-service/infra/worker"
@@ -19,7 +20,9 @@ var serverCmd = &cobra.Command{
 
 func main() {
 	database.Init()
-	worker.SetupChains()
+	if err := worker.SetupChains(); err != nil {
+		logrus.WithError(err).Fatal("setup chains fail")
+	}
 	api.MustServeFromViper(routers.BridgeRoutes)
 
 }

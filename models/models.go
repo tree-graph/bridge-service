@@ -39,17 +39,27 @@ type Config struct {
 
 // chain config
 type Chain struct {
-	Id        int64      `json:"id" gorm:"primary_key"`
-	Name      string     `json:"hash" binding:"required" gorm:"unique,not null"`
-	Rpc       string     `json:"rpc"  binding:"required" gorm:"not null"`
-	CreatedAt *time.Time `json:"created_at,string,omitempty"`
-	UpdatedAt *time.Time `json:"updated_at,string,omitempty"`
+	Id         int64      `json:"id" gorm:"primary_key"`
+	Name       string     `json:"hash" binding:"required" gorm:"unique,not null"`
+	VaultAddr  string     `json:"vault_addr" binding:"required" gorm:"not null"`
+	Rpc        string     `json:"rpc"  binding:"required" gorm:"not null"`
+	DelayBlock int        `json:"delay_block"  binding:"required" gorm:"not null"`
+	CreatedAt  *time.Time `json:"created_at,string,omitempty"`
+	UpdatedAt  *time.Time `json:"updated_at,string,omitempty"`
 }
 
 func GetChain(id int64) (Chain, error) {
 	var bean Chain
 	err := DB.Where("id=?", id).Take(&bean).Error
 	return bean, err
+}
+
+// track fetching event cursor of each chain.
+type ChainCursor struct {
+	Id          int64      `json:"id" gorm:"primary_key"`
+	Block       int64      `json:"block" gorm:"not null"`
+	LatestBlock int64      `json:"latest_block" gorm:""`
+	UpdatedAt   *time.Time `json:"updated_at,string,omitempty"`
 }
 
 const TxNotFound = 404
