@@ -206,7 +206,7 @@ func (worker ClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64, er
 	if err := database.DB.Where("cross_info_id=?", crossInfo.Id).Find(&items).Error; err != nil {
 		logrus.WithError(err).WithFields(logrus.Fields{
 			"crossId": crossInfo.Id, "chain": crossInfo.TargetChain,
-		}).Error("cross items not found")
+		}).Error("querying CrossItems in DB fail")
 		return "", nil, err
 	}
 
@@ -249,7 +249,8 @@ func (worker ClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64, er
 func (worker ClaimWorker) checkPooledClaim(claim models.ClaimPool) (int, error) {
 	if claim.Step == models.ClaimStepSendingTx {
 		return worker.sendClaimTx(claim)
-	} else if claim.Step == models.ClaimStepWaitingTx {
+	}
+	if claim.Step == models.ClaimStepWaitingTx {
 		receipt, err := worker.evmHandler.Client.TransactionReceipt(
 			context.Background(),
 			common.HexToHash(claim.TxnHash),
@@ -265,10 +266,9 @@ func (worker ClaimWorker) checkPooledClaim(claim models.ClaimPool) (int, error) 
 			return 0, err
 		}
 		return worker.checkReceipt(claim, receipt)
-	} else {
-		worker.notifyError("unknown claiming step "+claim.Step, "")
-		return worker.DelayForError, nil
 	}
+	worker.notifyError("unknown claiming step "+claim.Step, "")
+	return worker.DelayForError, nil
 }
 
 func (worker ClaimWorker) sendClaimTx(claim models.ClaimPool) (int, error) {
@@ -282,8 +282,8 @@ func (worker ClaimWorker) sendClaimTx(claim models.ClaimPool) (int, error) {
 	}
 	claimTxHash, claimNonce, err := worker.Claim(crossInfo)
 	if err != nil {
-		errorType := blockchain.GetRpcErrorType(err.Error())
-		resend, _ := errorType.NeedResendWhenSentErr()
+		errorType := blockchain.ParseRpcError(err.Error())
+		resend, _ := errorType.CheckTxErrorStatus()
 		if resend {
 			_ = moveClaimFromPoolToHistory(claim, uint64(errorType), "sending tx fail")
 			return 0, err
@@ -319,9 +319,9 @@ func (worker ClaimWorker) checkReceipt(claim models.ClaimPool, receipt *types.Re
 	return worker.DelayForError, nil
 }
 
-func (worker ClaimWorker) notifyError(info string, txnHash string) {
+func (worker ClaimWorker) notifyError(errorInfo string, txnHash string) {
 	logrus.WithFields(logrus.Fields{
-		"chainId": worker.ChainId, "tx": txnHash, "info": info,
+		"chainId": worker.ChainId, "tx": txnHash, "errorInfo": errorInfo,
 	}).Error("claim transaction fail")
 }
 

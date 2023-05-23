@@ -9,11 +9,11 @@ import (
 type ErrNotEnoughCashes map[string]ErrNotEnoughCash
 
 func (e ErrNotEnoughCashes) Error() string {
-	msgs := []string{}
+	var msgArray []string
 	for user, err := range e {
-		msgs = append(msgs, fmt.Sprintf("%v %v", user, err.Error()))
+		msgArray = append(msgArray, fmt.Sprintf("%v %v", user, err.Error()))
 	}
-	return strings.Join(msgs, "\n")
+	return strings.Join(msgArray, "\n")
 }
 
 type ErrNotEnoughCash struct {
@@ -25,76 +25,68 @@ func (e ErrNotEnoughCash) Error() string {
 	return fmt.Sprintf("out of balance, need %v, got %v", e.Need, e.Got)
 }
 
-var (
-	TX_PENDING_REASON_NOT_ENOUGH_CASH_BUT_NOT = "notEnoughCash but balance enough"
-	TX_PENDING_REASON_NOT_ENOUGH_CASH         = "notEnoughCash"
-	TX_PENDING_REASON_FUTURE_NONCE            = "futureNonce"
-	TX_PENDING_REASON_OLD_EPOCH_HEIGHT        = "oldEpochHeight"
-	TX_PENDING_REASON_OUT_DATED_STATUS        = "outdatedStatus"
-)
-
 type TxRpcError int
 
 const (
-	TX_ERR_RPC_OUT_OF_BALANCE TxRpcError = iota
-	TX_ERR_RPC_TXPOOL_FULL
-	TX_ERR_RPC_INSERT_VALIDATION_FAIL
-	TX_ERR_RPC_INSERT_FAIL_QUOTA_UNENOUGH
-	TX_ERR_RPC_SAME_NONCE_ALREADY_INSERTED
-	TX_ERR_RPC_STALE_NONCE
-	TX_ERR_RPC_EXCEED_MAX_GAS
-	TX_ERR_RPC_POOL_INCONSISTENT
-	TX_ERR_RPC_FAIL_READ_ACCOUNT_CACHE
-	TX_ERR_RPC_NONCE_DISTANT
-	TX_ERR_RPC_FAILED_IMPORT_TO_DEFFER_POOL
-	TX_ERR_RPC_TX_ALREADY_EXIST
+	TxErrRpcOutOfBalance TxRpcError = iota
+	TxErrRpcTxPoolFull
+	TxErrRpcInsertValidationFail
+	TxErrRpcInsertFailQuotaNotEnough
+	TxErrRpcSameNonceAlreadyInserted
+	TxErrRpcStaleNonce
+	TxErrRpcExceedMaxGas
+	TxErrRpcPoolInconsistent
+	TxErrRpcFailReadAccountCache
+	TxErrRpcNonceDistant
+	TxErrRpcFailedImportToDefferPool
+	TxAlreadyExist
 
-	TX_ERR_RPC_TOO_MANY_REQUEST
-	TX_ERR_RPC_CONFURA_QPS_EXCEED
-	TX_ERR_RPC_CONFURA_DAILYQ_EXCEED
-	TX_ERR_RPC_MISSING_BEST_HASH
-	TX_ERR_RPC_EPOCH_HEIGHT_OUT_BOUND
-	// 包括 vm revert, not enough cash
-	TX_ERR_ESTIMATE_OTHERS
-	TX_ERR_RPC_ESTIMATE_NOT_ENOUGH_CASH
-	TX_ERR_RPC_ESTIMATE_VM_ERR
-	TX_ERR_DROPPED
-	TX_ERR_RPC_OTHER
+	TxErrRpcTooManyRequest
+	TxErrRpcConfuraQpsExceed
+	TxErrRpcConfuraDailyQpsExceed
+	TxErrRpcMissingBestHash
+	TxErrRpcEpochHeightOutBound
+	// includes: vm revert, not enough cash
+	TxErrEstimateOthers
+	TxErrRpcEstimateNotEnoughCash
+	TxErrRpcEstimateVmErr
+	TxErrDropped
+	TxErrRpcOther
 )
 
-func (e *TxRpcError) NeedResendWhenSentErr() (needSend, needUpperGas bool) {
-	switch *e {
-	case TX_ERR_RPC_OUT_OF_BALANCE:
+func (e TxRpcError) CheckTxErrorStatus() (needSend, needUpperGas bool) {
+	switch e {
+	case TxErrRpcOutOfBalance:
 		return false, false
-	case TX_ERR_RPC_TXPOOL_FULL:
+	case TxErrRpcTxPoolFull:
 		return true, false
-	case TX_ERR_RPC_INSERT_VALIDATION_FAIL:
+	case TxErrRpcInsertValidationFail:
 		return false, false
-	case TX_ERR_RPC_INSERT_FAIL_QUOTA_UNENOUGH:
+	case TxErrRpcInsertFailQuotaNotEnough:
 		return false, false
-	case TX_ERR_RPC_SAME_NONCE_ALREADY_INSERTED:
+	case TxErrRpcSameNonceAlreadyInserted:
 		return true, true
-	case TX_ERR_RPC_STALE_NONCE:
+	case TxErrRpcStaleNonce:
 		return false, false
-	case TX_ERR_RPC_EXCEED_MAX_GAS:
+	case TxErrRpcExceedMaxGas:
 		return false, false
-	case TX_ERR_RPC_POOL_INCONSISTENT:
+	case TxErrRpcPoolInconsistent:
 		return true, false
-	case TX_ERR_RPC_FAIL_READ_ACCOUNT_CACHE:
+	case TxErrRpcFailReadAccountCache:
 		return true, false
-	case TX_ERR_RPC_NONCE_DISTANT:
+	case TxErrRpcNonceDistant:
 		return false, false
-	case TX_ERR_RPC_FAILED_IMPORT_TO_DEFFER_POOL:
+	case TxErrRpcFailedImportToDefferPool:
 		return true, false
-	case TX_ERR_RPC_TX_ALREADY_EXIST:
+	case TxAlreadyExist:
 		return false, false
-	case TX_ERR_RPC_TOO_MANY_REQUEST:
+	case TxErrRpcTooManyRequest:
 		fallthrough
-	case TX_ERR_RPC_CONFURA_QPS_EXCEED:
+	case TxErrRpcConfuraQpsExceed:
 		fallthrough
-	case TX_ERR_RPC_CONFURA_DAILYQ_EXCEED:
+	case TxErrRpcConfuraDailyQpsExceed:
 		return true, false
-	case TX_ERR_RPC_EPOCH_HEIGHT_OUT_BOUND: //EpochHeightOutOfBound
+	case TxErrRpcEpochHeightOutBound: //EpochHeightOutOfBound
 		return false, false
 	default:
 		return false, false
@@ -116,78 +108,67 @@ func (e *TxRpcError) NeedResendWhenSentErr() (needSend, needUpperGas bool) {
 // "Failed imported to deferred pool
 // "tx already exist"
 
-func GetRpcErrorType(errorStr string) TxRpcError {
+func ParseRpcError(errorStr string) TxRpcError {
 	if strings.Contains(errorStr, "txpool is full") {
-		return TX_ERR_RPC_TXPOOL_FULL
+		return TxErrRpcTxPoolFull
 	}
 	if strings.Contains(errorStr, "Transaction Pool is full") {
-		return TX_ERR_RPC_TXPOOL_FULL
+		return TxErrRpcTxPoolFull
 	}
 	if strings.Contains(errorStr, "failed to insert tx into pool (validation failed)") {
-		return TX_ERR_RPC_INSERT_VALIDATION_FAIL
+		return TxErrRpcInsertValidationFail
 	}
 	if strings.Contains(errorStr, "failed to insert tx into pool (quota not enough)") {
-		return TX_ERR_RPC_INSERT_FAIL_QUOTA_UNENOUGH
+		return TxErrRpcInsertFailQuotaNotEnough
 	}
 	if strings.Contains(errorStr, "exceeds the maximum value") {
-		return TX_ERR_RPC_EXCEED_MAX_GAS
+		return TxErrRpcExceedMaxGas
 	}
 	if strings.Contains(errorStr, "Tx with same nonce already inserted") {
-		return TX_ERR_RPC_SAME_NONCE_ALREADY_INSERTED
+		return TxErrRpcSameNonceAlreadyInserted
 	}
 	if strings.Contains(errorStr, "ready_account_pool and deferred_pool are inconsistent!") {
-		return TX_ERR_RPC_POOL_INCONSISTENT
+		return TxErrRpcPoolInconsistent
 	}
 	if strings.Contains(errorStr, "Failed to read account_cache from storage") {
-		return TX_ERR_RPC_FAIL_READ_ACCOUNT_CACHE
+		return TxErrRpcFailReadAccountCache
 	}
 	if strings.Contains(errorStr, "discarded due to in too distant future") {
-		return TX_ERR_RPC_NONCE_DISTANT
+		return TxErrRpcNonceDistant
 	}
 	if strings.Contains(errorStr, "discarded due to a too stale nonce") {
-		return TX_ERR_RPC_STALE_NONCE
+		return TxErrRpcStaleNonce
 	}
 	if strings.Contains(errorStr, "discarded due to out of balance") {
-		return TX_ERR_RPC_OUT_OF_BALANCE
+		return TxErrRpcOutOfBalance
 	}
 	if strings.Contains(errorStr, "NotEnoughCash") {
-		return TX_ERR_RPC_ESTIMATE_NOT_ENOUGH_CASH
+		return TxErrRpcEstimateNotEnoughCash
 	}
 	if strings.Contains(errorStr, "block_number is missing for best_hash") {
-		return TX_ERR_RPC_MISSING_BEST_HASH
+		return TxErrRpcMissingBestHash
 	}
 	if strings.Contains(errorStr, "Failed imported to deferred pool") {
-		return TX_ERR_RPC_FAILED_IMPORT_TO_DEFFER_POOL
+		return TxErrRpcFailedImportToDefferPool
 	}
 	if strings.Contains(errorStr, "tx already exist") {
-		return TX_ERR_RPC_TX_ALREADY_EXIST
+		return TxAlreadyExist
 	}
 	if strings.Contains(errorStr, "Vm reverted") || strings.Contains(errorStr, "VmError") || strings.Contains(errorStr, "Transaction reverted") {
-		return TX_ERR_RPC_ESTIMATE_VM_ERR
+		return TxErrRpcEstimateVmErr
 	}
 	if strings.Contains(errorStr, "too many requests") {
-		return TX_ERR_RPC_TOO_MANY_REQUEST
+		return TxErrRpcTooManyRequest
 	}
 	if strings.Contains(errorStr, "allowed qps exceeded") {
-		return TX_ERR_RPC_CONFURA_QPS_EXCEED
+		return TxErrRpcConfuraQpsExceed
 	}
 	if strings.Contains(errorStr, "daily request count exceeded") {
-		return TX_ERR_RPC_CONFURA_DAILYQ_EXCEED
+		return TxErrRpcConfuraDailyQpsExceed
 	}
 	if strings.Contains(errorStr, "EpochHeightOutOfBound") {
-		return TX_ERR_RPC_EPOCH_HEIGHT_OUT_BOUND
+		return TxErrRpcEpochHeightOutBound
 	}
 
-	return TX_ERR_RPC_OTHER
+	return TxErrRpcOther
 }
-
-type TxNormalError int
-
-const (
-	TX_ERR_NORMAL_OTHER TxNormalError = iota
-	TX_ERR_NORMAL_TIMEOUT
-	TX_ERR_NORMAL_PENDING_DROPPED_TX_EMPTY
-	TX_ERR_NORMAL_PENDING_DROPPED_OUT_EPOCH_HEIGHT
-	TX_ERR_NORMAL_DISCONNECT
-	TX_ERR_NORMAL_NO_SUCH_HOST
-)
