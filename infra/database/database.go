@@ -19,6 +19,10 @@ var migrationModels = []interface{}{
 	&models.CrossInfo{},
 	&models.CrossItem{},
 	&models.ChainCursor{},
+	&models.ClaimPool{},
+	&models.ClaimHistory{},
+	&models.ClaimCursor{},
+	&models.Secret{},
 }
 
 func Init() {

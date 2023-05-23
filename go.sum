@@ -66,6 +66,7 @@ github.com/Azure/go-autorest/logger v0.1.0/go.mod h1:oExouG+K6PryycPJfVSxi/koC6L
 github.com/Azure/go-autorest/tracing v0.5.0/go.mod h1:r/s2XiOKccPW3HrqB+W0TQzfbtp2fGCgRFtBroKn4Dk=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
+github.com/Conflux-Chain/go-conflux-sdk v1.0.29 h1:L2kPehaSBR8jHcNwzoz+bN+d/FGa37NF0+PAgi+Kb9o=
 github.com/Conflux-Chain/go-conflux-sdk v1.0.29/go.mod h1:eUYR736AUkH29rjeiPCLR2XXpH9stG2+NbztAXz1rJw=
 github.com/Conflux-Chain/go-conflux-util v0.1.0 h1:Ljnq6JwIc14XyAieyZOo2oyPAC7P2UhWH8akgZ625Mo=
 github.com/Conflux-Chain/go-conflux-util v0.1.0/go.mod h1:w2Ns80q8u9GfEvzrd18QvZUtlP3EmzVq9w8lZuY8uwk=
