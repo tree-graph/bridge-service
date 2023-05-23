@@ -12,21 +12,25 @@ import (
 	"math/big"
 )
 
-func SendClaimTx(pkStr string, vaultAddr string,
+func SendClaimTxByPk(pkStr string, vaultAddr string,
 	srcChainId *big.Int,
-	request vault.VaultCrossRequest, client ethclient.Client) (string, error) {
+	request vault.VaultCrossRequest, client ethclient.Client) (string, *uint64, error) {
 	privateKey, address, err := CreateKeyPair(pkStr)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
+	return SendClaimTx(privateKey, address, vaultAddr, srcChainId, request, client)
+}
+func SendClaimTx(privateKey *ecdsa.PrivateKey, address *common.Address, vaultAddr string,
+	srcChainId *big.Int, request vault.VaultCrossRequest, client ethclient.Client) (string, *uint64, error) {
 	nonce, gasPrice, err := GetNonceAndGas(client, address)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, request.ToChainId)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	auth.Nonce = big.NewInt(int64(*nonce))
 	auth.Value = big.NewInt(0)     // in wei
@@ -35,7 +39,7 @@ func SendClaimTx(pkStr string, vaultAddr string,
 
 	valutContract, err := vault.NewVaultTransactor(common.HexToAddress(vaultAddr), &client)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	srcContract := request.Asset
 	localContract := request.TargetContract
@@ -47,10 +51,10 @@ func SendClaimTx(pkStr string, vaultAddr string,
 
 	transaction, err := valutContract.ClaimByAdmin(auth, srcChainId, srcContract, localContract, tokenIds, amounts, uris, issuer, userNonce)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	return transaction.Hash().Hex(), nil
+	return transaction.Hash().Hex(), nonce, nil
 }
 func GetNonceAndGas(client ethclient.Client, fromAddress *common.Address) (*uint64, *big.Int, error) {
 	nonce, err := client.PendingNonceAt(context.Background(), *fromAddress)

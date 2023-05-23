@@ -10,9 +10,6 @@ import (
 	"github.com/tree-graph/bridge-service/infra/database"
 	"github.com/tree-graph/bridge-service/models"
 	"gorm.io/gorm"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 )
 
@@ -21,7 +18,6 @@ type CrossEventWorker struct {
 	vaultAddr string
 }
 
-// It will block current thread.
 // Run a go routine for each chain.
 func RunAllCrossEventWorker() error {
 	workers, err := setup()
@@ -40,9 +36,6 @@ func RunAllCrossEventWorker() error {
 	}
 
 	// block main thread
-	exitSignal := make(chan os.Signal)
-	signal.Notify(exitSignal, syscall.SIGINT, syscall.SIGTERM)
-	<-exitSignal
 	return nil
 }
 
