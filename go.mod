@@ -8,8 +8,6 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v0.0.3
-	github.com/spf13/viper v1.10.0
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/gorm v1.21.15
 )
 
@@ -31,6 +29,8 @@ require (
 	github.com/openweb3/go-sdk-common v0.0.0-20220720074746-a7134e1d372c // indirect
 	github.com/openweb3/web3go v0.2.5 // indirect
 	github.com/prometheus/tsdb v0.7.1 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/spf13/viper v1.10.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.33.0 // indirect
@@ -38,7 +38,7 @@ require (
 )
 
 require (
-	github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230530100911-44fe76a99018
+	github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230602033356-dd66f68dfd0b
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
@@ -50,7 +50,7 @@ require (
 	github.com/go-playground/locales v0.13.0 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
-	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/uuid v1.1.5 // indirect
