@@ -1,11 +1,10 @@
 package worker
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	sdk "github.com/Conflux-Chain/go-conflux-sdk"
 	"github.com/sirupsen/logrus"
-	"github.com/tree-graph/bridge-service/helpers"
 	"github.com/tree-graph/bridge-service/infra/blockchain"
 	"github.com/tree-graph/bridge-service/infra/database"
 	"github.com/tree-graph/bridge-service/models"
@@ -14,8 +13,9 @@ import (
 )
 
 type CrossEventWorker struct {
-	fetcher   *blockchain.EventFetcher
+	fetcher   *blockchain.IEventFetcher
 	vaultAddr string
+	Chain     models.Chain
 }
 
 // Run a go routine for each chain.
@@ -29,7 +29,7 @@ func RunAllCrossEventWorker() error {
 
 	for _, worker := range workers {
 		logrus.WithFields(logrus.Fields{
-			"chain":      worker.ChainId(),
+			"chain":      worker.Chain.Name,
 			"vault addr": worker.vaultAddr,
 		}).Info("start chain")
 		go worker.Run()
@@ -40,9 +40,6 @@ func RunAllCrossEventWorker() error {
 }
 
 // setup all chains, create a worker for each chain.
-func (worker CrossEventWorker) ChainId() int64 {
-	return worker.fetcher.Handler.ChainId
-}
 func setup() ([]*CrossEventWorker, error) {
 	var workers []*CrossEventWorker
 	var chains []models.Chain
@@ -67,19 +64,20 @@ func setup() ([]*CrossEventWorker, error) {
 			}
 			return nil, err
 		}
-
-		if err := blockchain.AddChainClient(chain); err != nil {
-			return nil, err
+		var worker *CrossEventWorker
+		var err error
+		if chain.ChainType == models.CfxChain {
+			worker, err = buildCfxWorker(chain)
+		} else if chain.ChainType == models.EvmChain {
+			worker, err = buildEvmWorker(chain)
+		} else {
+			err = fmt.Errorf("unsportted chain type [%v]", chain.ChainType)
 		}
-
-		fetcher, err := blockchain.NewEventFetcher(chain.Id, chain.VaultAddr)
 		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"name": chain.Name, "type": chain.ChainType,
+			}).Debug("build chain fetcher fail")
 			return nil, err
-		}
-
-		worker := &CrossEventWorker{
-			fetcher:   fetcher,
-			vaultAddr: chain.VaultAddr,
 		}
 		workers = append(workers, worker)
 	}
@@ -87,12 +85,55 @@ func setup() ([]*CrossEventWorker, error) {
 	return workers, nil
 }
 
+func buildCfxWorker(chain models.Chain) (*CrossEventWorker, error) {
+	cfxClient, err := sdk.NewClient(chain.Rpc)
+	if err != nil {
+		logrus.Debug("create cfx client fail")
+		return nil, err
+	}
+
+	cfxFetcher, err := blockchain.NewCfxFetcher(chain.ChainId, chain.VaultAddr, cfxClient)
+	if err != nil {
+		return nil, err
+	}
+
+	var iFetcher blockchain.IEventFetcher
+	iFetcher = cfxFetcher
+
+	worker := &CrossEventWorker{
+		fetcher:   &iFetcher,
+		vaultAddr: chain.VaultAddr,
+		Chain:     chain,
+	}
+	return worker, nil
+}
+
+func buildEvmWorker(chain models.Chain) (*CrossEventWorker, error) {
+	if err := blockchain.AddChainClient(chain); err != nil {
+		return nil, err
+	}
+
+	fetcher, err := blockchain.NewEventFetcher(chain.Id, chain.VaultAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	var iFetcher blockchain.IEventFetcher
+	iFetcher = fetcher
+	worker := &CrossEventWorker{
+		fetcher:   &iFetcher,
+		vaultAddr: chain.VaultAddr,
+		Chain:     chain,
+	}
+	return worker, nil
+}
+
 func (worker CrossEventWorker) Run() {
 	for {
 		sleepT, err := worker.doWork()
 		if err != nil {
 			logrus.WithError(err).
-				WithField("chainId", worker.fetcher.Handler.ChainId).
+				WithField("chain", worker.Chain.Name).
 				Error("unhandled error")
 			time.Sleep(time.Second)
 		} else if sleepT > 0 {
@@ -103,54 +144,48 @@ func (worker CrossEventWorker) Run() {
 func (worker CrossEventWorker) doWork() (int, error) {
 	// Fetch cursor each time, in case an operator changes it directly in the database.
 	var cursor models.ChainCursor
-	var fetcher = worker.fetcher
-	chainId := fetcher.Handler.ChainId
-	if err := database.DB.Where("id = ?", chainId).Take(&cursor).Error; err != nil {
+	fetcher := *worker.fetcher
+	chainDbId := worker.Chain.Id
+	if err := database.DB.Where("id = ?", chainDbId).Take(&cursor).Error; err != nil {
 		return 0, err
 	}
-	chain, err := models.GetChain(chainId)
+	chain, err := models.GetChain(chainDbId)
 	if err != nil {
 		return 0, err
 	}
 
 	currentBlock := cursor.Block + 1
 	logEntry := logrus.WithFields(logrus.Fields{
-		"ChainId": chainId, "currentBlock": currentBlock,
+		"ChainId": chainDbId, "currentBlock": currentBlock,
 	})
 
 	if cursor.LatestBlock < currentBlock+int64(chain.DelayBlock) {
-		n, err := fetcher.Handler.Client.BlockNumber(context.Background())
+		n, err := fetcher.BlockNumber()
 		if err != nil {
 			return 0, err
 		}
 		logEntry.Info("latest block ", n)
 		if n != uint64(cursor.LatestBlock) {
 			logrus.WithFields(logrus.Fields{
-				"latest_block": n, "chain": chainId,
+				"latest_block": n, "chain": chainDbId,
 			}).Info("update latest_block")
 			return 0, database.DB.Model(cursor).
-				Where("id = ?", chainId).
+				Where("id = ?", chainDbId).
 				Update("latest_block", n).Error
 		}
 		return 1, nil
 	}
 
-	parsedLogs, err := fetcher.Fetch(uint64(currentBlock))
+	blockTime, parsedLogs, err := fetcher.Fetch(uint64(currentBlock))
 	if err != nil {
 		return 0, err
 	}
 	if len(parsedLogs) == 0 {
 		logEntry.Debug("no logs")
-		return 0, database.DB.Model(&cursor).Where("id = ?", chainId).Update("block", currentBlock).Error
+		return 0, database.DB.Model(&cursor).Where("id = ?", chainDbId).Update("block", currentBlock).Error
 	}
 
-	block, blockErr := fetcher.Handler.BlockByNumber(helpers.Uint64ToBigInt(parsedLogs[0].Raw.BlockNumber))
-	if blockErr != nil {
-		logEntry.WithError(blockErr).Error("fetch block fail")
-		return 1, nil
-	}
-
-	crossInfoArr, crossItemsArr := BuildCrossInfo(block, parsedLogs, chainId)
+	crossInfoArr, crossItemsArr := BuildCrossInfo(*blockTime, parsedLogs, chainDbId)
 
 	allItemCount := 0
 	allTxErr := database.DB.Transaction(func(tx *gorm.DB) error {
@@ -168,7 +203,7 @@ func (worker CrossEventWorker) doWork() (int, error) {
 		if itemE := tx.Create(allItems).Error; itemE != nil {
 			return itemE
 		}
-		return tx.Model(&cursor).Where("id = ?", chainId).Update("block", currentBlock).Error
+		return tx.Model(&cursor).Where("id = ?", chainDbId).Update("block", currentBlock).Error
 	})
 
 	if allTxErr != nil {

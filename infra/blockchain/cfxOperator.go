@@ -121,6 +121,10 @@ func Cross721(client sdk.Client,
 	logrus.Info("claim by tx succeeded, hash ", claimTxHash)
 }
 
+func CfxClaim() {
+
+}
+
 func DumpTokenVaultInfo(client sdk.Client, vaultAddr, account types.Address) {
 	logrus.Info("DumpTokenVaultInfo,  account ", account)
 	vault, _ := tokens.NewTokenVaultCaller(vaultAddr, &client)
