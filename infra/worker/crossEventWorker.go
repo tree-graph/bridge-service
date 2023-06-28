@@ -1,9 +1,9 @@
 package worker
 
 import (
-	"errors"
 	"fmt"
 	sdk "github.com/Conflux-Chain/go-conflux-sdk"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/infra/blockchain"
 	"github.com/tree-graph/bridge-service/infra/database"
@@ -156,7 +156,7 @@ func (worker CrossEventWorker) doWork() (int, error) {
 
 	currentBlock := cursor.Block + 1
 	logEntry := logrus.WithFields(logrus.Fields{
-		"ChainId": chainDbId, "currentBlock": currentBlock,
+		"ChainId": chainDbId, "currentBlock": currentBlock, "latest": cursor.LatestBlock,
 	})
 
 	if cursor.LatestBlock < currentBlock+int64(chain.DelayBlock) {
@@ -187,33 +187,44 @@ func (worker CrossEventWorker) doWork() (int, error) {
 
 	crossInfoArr, crossItemsArr := BuildCrossInfo(*blockTime, parsedLogs, chainDbId)
 
+	err = SaveCrossRequest(crossInfoArr, crossItemsArr, chainDbId, currentBlock)
+	if err != nil {
+		return 1, err
+	}
+
+	return 0, nil
+}
+
+func SaveCrossRequest(crossInfoArr []models.CrossInfo, crossItemsArr [][]models.CrossItem,
+	chainDbId int64, currentBlock int64) error {
 	allItemCount := 0
 	allTxErr := database.DB.Transaction(func(tx *gorm.DB) error {
-		if infoE := tx.Create(crossInfoArr).Error; infoE != nil {
-			return infoE
-		}
-		var allItems []models.CrossItem
-		for i, info := range crossInfoArr {
-			for _, item := range crossItemsArr[i] {
-				item.CrossInfoId = info.Id
-				allItems = append(allItems, item)
+		if len(crossItemsArr) > 0 {
+			if infoE := tx.Create(crossInfoArr).Error; infoE != nil {
+				return infoE
 			}
-			allItemCount += len(crossItemsArr[i])
+			var allItems []models.CrossItem
+			for i, info := range crossInfoArr {
+				for _, item := range crossItemsArr[i] {
+					item.CrossInfoId = info.Id
+					allItems = append(allItems, item)
+				}
+				allItemCount += len(crossItemsArr[i])
+			}
+			if itemE := tx.Create(allItems).Error; itemE != nil {
+				return itemE
+			}
 		}
-		if itemE := tx.Create(allItems).Error; itemE != nil {
-			return itemE
-		}
-		return tx.Model(&cursor).Where("id = ?", chainDbId).Update("block", currentBlock).Error
+		return tx.Model(&models.ChainCursor{}).Where("id = ?", chainDbId).Update("block", currentBlock).Error
 	})
 
 	if allTxErr != nil {
-		logEntry.WithError(allTxErr).Error("save crossing info error")
-		return 1, nil
+		return errors.WithMessage(allTxErr, "save crossing info error")
 	}
 
-	logEntry.WithFields(logrus.Fields{
-		"eventCount": len(crossInfoArr), "itemCount": allItemCount,
+	logrus.WithFields(logrus.Fields{
+		"eventCount": len(crossInfoArr), "itemCount": allItemCount, "cursor": currentBlock,
 	}).Infof("crossing info saved successfully")
 
-	return 0, nil
+	return nil
 }

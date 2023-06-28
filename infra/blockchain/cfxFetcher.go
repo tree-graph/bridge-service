@@ -25,7 +25,7 @@ func GetCfxClient() *sdk.Client {
 }
 
 func NewCfxFetcher(chain int64, vaultAddr string, client *sdk.Client) (*CfxFetcher, error) {
-	filter, err := tokens.NewTokenVaultFilterer(cfxaddress.MustNewFromHex(vaultAddr, uint32(chain)), client)
+	filter, err := tokens.NewTokenVaultFilterer(cfxaddress.MustNewFromBase32(vaultAddr), client)
 	if err != nil {
 		logrus.WithError(err).Error("NewTokenVaultFilterer by cfx fail")
 		return nil, err
@@ -59,7 +59,10 @@ func (fetcher CfxFetcher) Fetch(epoch uint64) (*time.Time, []*vault.VaultCrossRe
 	var matchedLogs []*vault.VaultCrossRequest
 	for iter.Next() {
 		log := iter.Event
-		if log.Raw.Address.GetHexAddress() != fetcher.vaultAddr {
+		if log.Raw.Address.String() != fetcher.vaultAddr {
+			logrus.WithFields(logrus.Fields{
+				"want": fetcher.vaultAddr, "actual": log.Raw.Address,
+			}).Debug("vault address mismatch")
 			continue
 		}
 		matchedLogs = append(matchedLogs, convertLog(log))

@@ -18,10 +18,12 @@ import (
 	"time"
 )
 
-func Test721(client sdk.Client, infoFile string, deploy bool) error {
+func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, claim bool, reverse bool) error {
 	chainId := big.NewInt(1029)
 	account, _ := client.AccountManager.GetDefault()
-	tokenId := time.Now().Unix()
+	if tokenId < 1 {
+		tokenId = time.Now().Unix()
+	}
 	var erc721a *types.Address
 	var erc721b *types.Address
 	pegInfoFile := "./pegInfo.json"
@@ -63,20 +65,26 @@ func Test721(client sdk.Client, infoFile string, deploy bool) error {
 	}
 	//
 	erc721aContract, _ := tokens.NewPeggedERC721Transactor(*erc721a, &client)
-	_, mintTxHash, _ := erc721aContract.SafeMint(buildGas(), account.MustGetCommonAddress(), big.NewInt(tokenId), "storage-uri-test721.json")
-	mintRcpt, _ := client.WaitForTransationReceipt(*mintTxHash, time.Second)
-	if mintRcpt.OutcomeStatus != 0 {
-		logrus.Error("mint fail, token id ", tokenId)
-		return nil
+	if reverse {
+		erc721a, erc721b = erc721b, erc721a
+	} else {
+		_, mintTxHash, _ := erc721aContract.SafeMint(buildGas(), account.MustGetCommonAddress(), big.NewInt(tokenId), "storage-uri-test721.json")
+		mintRcpt, _ := client.WaitForTransationReceipt(*mintTxHash, time.Second)
+		if mintRcpt.OutcomeStatus != 0 {
+			logrus.Error("mint fail, token id ", tokenId)
+			return nil
+		}
 	}
-	Cross721(client, &vaultProxy, erc721a, chainId, erc721b, tokenId)
-	Cross721(client, &vaultProxy, erc721b, chainId, erc721a, tokenId)
+	Cross721(client, &vaultProxy, erc721a, chainId, erc721b, tokenId, claim)
+	if claim {
+		Cross721(client, &vaultProxy, erc721b, chainId, erc721a, tokenId, claim)
+	}
 	return nil
 }
 
 func Cross721(client sdk.Client,
 	vaultProxy, erc721a *types.Address,
-	dstChain *big.Int, erc721b *types.Address, tokenId int64) {
+	dstChain *big.Int, erc721b *types.Address, tokenId int64, claim bool) {
 	account, _ := client.AccountManager.GetDefault()
 
 	data, err := encode(dstChain, erc721b.MustGetCommonAddress())
@@ -101,6 +109,10 @@ func Cross721(client sdk.Client,
 		return
 	}
 
+	if !claim {
+		logrus.Info("do not claim, skip.")
+		return
+	}
 	// claim
 	vault, err := tokens.NewTokenVaultTransactor(*vaultProxy, &client)
 	helpers.CheckFatalError("NewTokenVaultTransactor", err)
@@ -160,7 +172,7 @@ func GetCrossRequest(client sdk.Client, vaultProxy *types.Address, rcpt *types.T
 		logrus.Error("crossRequest event not found in tx ", transferTxHash)
 		return nil
 	}
-	logrus.Info("found crossRequest event , tx ", transferTxHash)
+	logrus.WithFields(logrus.Fields{"epoch": rcpt.EpochNumber}).Info("found crossRequest event , tx ", transferTxHash)
 	return req
 }
 

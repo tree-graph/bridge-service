@@ -93,7 +93,7 @@ const EmptyEvent = 501
 // Cross detail for each transaction. Corresponds to CrossEvent in the contract.
 type CrossInfo struct {
 	Id             int        `json:"id" gorm:"primary_key,autoIncrement,index:idx_target_chain,priority:2"`
-	SourceChain    int64      `json:"chain_id" gorm:"index, not null"`
+	SourceChain    int64      `json:"chain_id,string" gorm:"index, not null"`
 	TxnHash        string     `json:"txn_hash" binding:"required" gorm:"unique,not null"`
 	Asset          string     `json:"asset" gorm:"type:char(42) not null"`
 	From           string     `json:"from" gorm:"type:char(42) not null"`
@@ -113,6 +113,19 @@ type CrossItem struct {
 	Uri         string `json:"uri"  binding:"required" gorm:"type:longtext"`
 }
 
+type ReportCrossRequest struct {
+	ChainId   int64         `json:"chainId,string"`
+	Cursor    int64         `json:"cursor"`
+	BlockTime int64         `json:"blockTime"`
+	Infos     []CrossInfo   `json:"infos"`
+	Items     [][]CrossItem `json:"items"`
+}
+
+type CrossVO struct {
+	Info  CrossInfo
+	Items []CrossItem
+}
+
 const ClaimStepSendingTx = "sending_tx"
 const ClaimStepWaitingTx = "waiting_tx"
 const ClaimStepError = "error"
@@ -124,7 +137,7 @@ type ClaimPool struct {
 	TargetChain    int64      `json:"target_chain_id" gorm:"not null"`
 	TargetContract string     `json:"target_contract" gorm:"type:char(66) not null"`
 	TxnHash        string     `json:"txn_hash" binding:"required" gorm:"unique,not null"`
-	From           string     `json:"from" gorm:"type:char(42) not null"`
+	From           string     `json:"from" gorm:"type:char(66) not null"`
 	Nonce          uint64     `json:"user_nonce" gorm:"not null"`
 	Step           string     `json:"step" gorm:"type:varchar(16) not null"`
 	Status         *int64     `json:"status" gorm:""`
@@ -139,7 +152,7 @@ type ClaimHistory struct {
 	TargetChain    int64      `json:"target_chain_id" gorm:"not null"`
 	TargetContract string     `json:"target_contract" gorm:"type:char(66) not null"`
 	TxnHash        string     `json:"txn_hash" binding:"required" gorm:"unique,not null"`
-	From           string     `json:"from" gorm:"type:char(42) not null"`
+	From           string     `json:"from" gorm:"type:char(66) not null"`
 	Nonce          uint64     `json:"user_nonce" gorm:"not null"`
 	Comment        string     `json:"comment" binding:"" gorm:""`
 	Status         uint64     `json:"status" gorm:""`
