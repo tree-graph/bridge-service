@@ -150,7 +150,7 @@ func (worker CfxClaimWorker) checkReceipt(claim models.ClaimPool, receipt *types
 		logrus.WithFields(logrus.Fields{
 			"chain": worker.Chain.Name, "CrossInfoId": claim.CrossInfoId,
 		}).Debug("claiming succeeded ", claim.TxnHash)
-		if err := MoveClaimFromPoolToHistory(claim, receipt.OutcomeStatus, "OK"); err != nil {
+		if err := MoveClaimFromPoolToHistory(claim, uint64(receipt.OutcomeStatus), "OK"); err != nil {
 			return 0, err
 		}
 		return 0, nil

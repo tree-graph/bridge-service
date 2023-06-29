@@ -12,33 +12,20 @@ require (
 )
 
 require (
-	github.com/VictoriaMetrics/fastcache v1.6.0 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/fatih/color v1.13.0 // indirect
-	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-cmp v0.5.7 // indirect
-	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
-	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
-	github.com/holiman/uint256 v1.2.0 // indirect
 	github.com/klauspost/compress v1.14.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-runewidth v0.0.9 // indirect
-	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/openweb3/go-rpc-provider v0.3.1 // indirect
-	github.com/openweb3/go-sdk-common v0.0.0-20220720074746-a7134e1d372c // indirect
-	github.com/openweb3/web3go v0.2.5 // indirect
-	github.com/prometheus/tsdb v0.7.1 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spf13/viper v1.10.0
-	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.33.0 // indirect
-	gotest.tools v2.2.0+incompatible // indirect
 )
 
 require (
-	github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230602033356-dd66f68dfd0b
+	//github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230602033356-dd66f68dfd0b
+	github.com/Conflux-Chain/go-conflux-sdk v1.5.0
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect

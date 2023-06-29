@@ -55,6 +55,7 @@ func (fetcher CfxFetcher) Fetch(epoch uint64) (*time.Time, []*vault.VaultCrossRe
 	iter, err := fetcher.filter.FilterCrossRequest(fetcher.filterOpts, nil, nil)
 	if err != nil {
 		logrus.WithError(err).Error("query cfx logs fail, epoch ", epoch)
+		return nil, nil, err
 	}
 	var matchedLogs []*vault.VaultCrossRequest
 	for iter.Next() {

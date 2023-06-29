@@ -35,7 +35,6 @@ func RunAllCrossEventWorker() error {
 		go worker.Run()
 	}
 
-	// block main thread
 	return nil
 }
 
@@ -62,7 +61,7 @@ func setup() ([]*CrossEventWorker, error) {
 					return nil, errCreate
 				}
 			}
-			return nil, err
+			return nil, errors.WithMessage(err, "check event cursor fail")
 		}
 		var worker *CrossEventWorker
 		var err error

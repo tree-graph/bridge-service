@@ -3,15 +3,15 @@ package worker
 import (
 	"context"
 	"crypto/ecdsa"
-	"errors"
 	"fmt"
 	sdk "github.com/Conflux-Chain/go-conflux-sdk"
-	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"github.com/tree-graph/bridge-service/helpers"
 	"github.com/tree-graph/bridge-service/infra/blockchain"
 	"github.com/tree-graph/bridge-service/infra/contracts/vault"
 	"github.com/tree-graph/bridge-service/infra/database"
@@ -171,7 +171,7 @@ func setupClaimWorkers() ([]*IClaimWorker, error) {
 		if err != nil {
 			logrus.WithFields(logrus.Fields{"chain": chain.Id, "name": chain.Name}).
 				Error("secret not found")
-			return nil, err
+			return nil, errors.WithMessage(err, "secret not found")
 		}
 		// prepare claiming cursor
 		var claimCursor models.ClaimCursor
@@ -213,7 +213,7 @@ func createCfxWorker(chain models.Chain, secret models.Secret) (*IClaimWorker, e
 		logrus.Debug("create cfx client fail")
 		return nil, err
 	}
-	cfxClient.SetNetworkId(uint32(chain.ChainId))
+	//cfxClient.SetNetworkId(uint32(chain.ChainId))
 	am := sdk.NewAccountManager("./keystore/", uint32(chain.ChainId))
 	cfxClient.SetAccountManager(am)
 
@@ -222,8 +222,11 @@ func createCfxWorker(chain models.Chain, secret models.Secret) (*IClaimWorker, e
 		// things go well
 	} else if strings.Contains(err.Error(), keystore.ErrAccountAlreadyExists.Error()) {
 		// nothing
-		addressD := cfxaddress.MustNewFromBase32(secret.Address)
-		address = addressD
+		addressD, err := helpers.CfxAddressOfPrivate(secret.Private[2:], uint32(chain.ChainId))
+		if err != nil {
+			return nil, errors.WithMessage(err, "parse private key fail")
+		}
+		address = *addressD
 	} else {
 		logrus.Debug("import cfx key fail")
 		return nil, err

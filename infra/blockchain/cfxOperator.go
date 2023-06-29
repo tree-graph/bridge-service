@@ -18,8 +18,11 @@ import (
 	"time"
 )
 
-func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, claim bool, reverse bool) error {
-	chainId := big.NewInt(1029)
+func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, claim bool, reverse bool, chDbId int64) error {
+	// consortium chain may have duplicate chain id. we use a logic db id instead.
+	chainDbId := big.NewInt(chDbId)
+	netId, _ := client.GetNetworkID()
+	chainId := big.NewInt(int64(netId))
 	account, _ := client.AccountManager.GetDefault()
 	if tokenId < 1 {
 		tokenId = time.Now().Unix()
@@ -28,7 +31,7 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 	var erc721b *types.Address
 	pegInfoFile := "./pegInfo.json"
 	var vaultProxy, _ = cfxaddress.New(ReadInfo(infoFile, "proxyTokenVault"))
-	DumpTokenVaultInfo(client, vaultProxy, *account)
+	DumpTokenVaultInfo(client, vaultProxy, *account, chainId)
 
 	if deploy {
 		tag := infoFile
@@ -40,11 +43,11 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 		erc721b = erc721bTmp
 		showOwner(client, erc721b)
 		// 0->1
-		_ = RegisterArrival(client, tag, *erc721a, chainId, *erc721b, tokens.MINT, tokens.STORAGE)
-		_ = RegisterDeparture(client, tag, *erc721a, chainId, *erc721b, tokens.OpNotSet, tokens.STORAGE)
+		_ = RegisterArrival(client, tag, *erc721a, chainDbId, *erc721b, tokens.MINT, tokens.STORAGE)
+		_ = RegisterDeparture(client, tag, *erc721a, chainDbId, *erc721b, tokens.OpNotSet, tokens.STORAGE)
 		// 1->0
-		_ = RegisterArrival(client, tag, *erc721b, chainId, *erc721a, tokens.TRANSFER, tokens.UriModeNotSet)
-		_ = RegisterDeparture(client, tag, *erc721b, chainId, *erc721a, tokens.BURN721, tokens.UriModeNotSet)
+		_ = RegisterArrival(client, tag, *erc721b, chainDbId, *erc721a, tokens.TRANSFER, tokens.UriModeNotSet)
+		_ = RegisterDeparture(client, tag, *erc721b, chainDbId, *erc721a, tokens.BURN721, tokens.UriModeNotSet)
 		// transfer ownership to token vault
 		logrus.Info("transfer ownership of ", erc721b, " to ", vaultProxy)
 		erc721aContract, _ := tokens.NewPeggedERC721Transactor(*erc721b, &client)
@@ -75,9 +78,9 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 			return nil
 		}
 	}
-	Cross721(client, &vaultProxy, erc721a, chainId, erc721b, tokenId, claim)
+	Cross721(client, &vaultProxy, erc721a, chainDbId, erc721b, tokenId, claim)
 	if claim {
-		Cross721(client, &vaultProxy, erc721b, chainId, erc721a, tokenId, claim)
+		Cross721(client, &vaultProxy, erc721b, chainDbId, erc721a, tokenId, claim)
 	}
 	return nil
 }
@@ -127,7 +130,8 @@ func Cross721(client sdk.Client,
 		logrus.WithFields(logrus.Fields{
 			"message": claimRcpt.TxExecErrorMsg, "hash": claimTxHash,
 		}).Error("claim by admin tx failed")
-		DumpTokenVaultInfo(client, *vaultProxy, *account)
+		chainId, _ := client.GetNetworkID()
+		DumpTokenVaultInfo(client, *vaultProxy, *account, big.NewInt(int64(chainId)))
 		return
 	}
 	logrus.Info("claim by tx succeeded, hash ", claimTxHash)
@@ -137,7 +141,7 @@ func CfxClaim() {
 
 }
 
-func DumpTokenVaultInfo(client sdk.Client, vaultAddr, account types.Address) {
+func DumpTokenVaultInfo(client sdk.Client, vaultAddr, account types.Address, chainId *big.Int) {
 	logrus.Info("DumpTokenVaultInfo,  account ", account)
 	vault, _ := tokens.NewTokenVaultCaller(vaultAddr, &client)
 
@@ -147,7 +151,7 @@ func DumpTokenVaultInfo(client sdk.Client, vaultAddr, account types.Address) {
 	has, err := vault.HasRole(buildCallOpt(client), b32, account.MustGetCommonAddress())
 	logrus.Info("has role CLAIM_ON_VAULT ", has, " ", err)
 
-	n, err := vault.GetUserNextClaimNonce(buildCallOpt(client), account.MustGetCommonAddress(), big.NewInt(1029))
+	n, err := vault.GetUserNextClaimNonce(buildCallOpt(client), account.MustGetCommonAddress(), chainId)
 	logrus.Info("GetUserNextClaimNonce ", n, err)
 }
 
@@ -172,7 +176,7 @@ func GetCrossRequest(client sdk.Client, vaultProxy *types.Address, rcpt *types.T
 		logrus.Error("crossRequest event not found in tx ", transferTxHash)
 		return nil
 	}
-	logrus.WithFields(logrus.Fields{"epoch": rcpt.EpochNumber}).Info("found crossRequest event , tx ", transferTxHash)
+	logrus.WithFields(logrus.Fields{"epoch": rcpt.EpochNumber.String()}).Info("found crossRequest event , tx ", transferTxHash)
 	return req
 }
 
@@ -186,11 +190,11 @@ func showOwner(client sdk.Client, erc721 *types.Address) {
 }
 
 func buildCallOpt(client sdk.Client) *bind.CallOpts {
-	epoch, err := client.GetEpochNumber()
-	helpers.CheckFatalError("GetEpochNumber", err)
-	logrus.Info("Use epoch ", epoch)
+	//epoch, err := client.GetEpochNumber()
+	//helpers.CheckFatalError("GetEpochNumber", err)
+	//logrus.Info("Use epoch ", epoch.ToInt())
 	opts := &bind.CallOpts{
-		EpochNumber: types.NewEpochNumber(epoch),
+		EpochNumber: types.EpochLatestState,
 	}
 	return opts
 }

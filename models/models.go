@@ -64,7 +64,7 @@ func GetChain(id int64) (Chain, error) {
 // Store confidential information in separate data sheets
 type Secret struct {
 	Id        int64      `json:"id" gorm:"primary_key"`
-	ChainId   int64      `json:"chain_id" gorm:"unique"`
+	ChainId   int64      `json:"chain_id" gorm:""`
 	Private   string     `json:"private" binding:"required" gorm:"char(66),not null"`
 	Address   string     `json:"address" binding:"" gorm:"type:varchar(66)"`
 	Comment   string     `json:"comment" binding:"" gorm:"type:varchar(1024)"`
@@ -74,7 +74,7 @@ type Secret struct {
 
 func GetSecret(id int64) (Secret, error) {
 	var bean Secret
-	err := DB.Where("chain_id=?", id).Take(&bean).Error
+	err := DB.Where("id=?", id).Take(&bean).Error
 	return bean, err
 }
 

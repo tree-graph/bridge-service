@@ -115,15 +115,16 @@ func BuildCrossRequest(ctx *gin.Context) (interface{}, error) {
 }
 func CheckClaimTask(ctx *gin.Context) (interface{}, error) {
 	id := ctx.Query("id")
+	clientName := ctx.Query("clientName")
 	uid, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	_, err = worker.CheckClaimTask(uid, "")
+	delaySeconds, err := worker.CheckClaimTask(uid, clientName)
 	if err != nil {
-		return "fail", err
+		return nil, err
 	}
-	return "OK", nil
+	return delaySeconds, nil
 }
 func GetPooledClaim(ctx *gin.Context) (interface{}, error) {
 	id := ctx.Query("id")
