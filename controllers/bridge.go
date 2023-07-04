@@ -37,32 +37,32 @@ func CrossRequest(ctx *gin.Context) (interface{}, error) {
 }
 
 func UpdateClaimPool(ctx *gin.Context) (interface{}, error) {
-	id := ctx.Param("id")
-	claimTxHash := ctx.Param("claimTxHash")
-	txFrom := ctx.Param("txFrom")
+	id := ctx.Query("id")
+	claimTxHash := ctx.Query("claimTxHash")
+	txFrom := ctx.Query("txFrom")
 	nonce, err := strconv.ParseUint(ctx.Query("nonce"), 10, 64)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "invalid nonce")
 	}
 	var pooledClaim models.ClaimPool
 	if err := database.DB.Where("id=?", id).
 		Take(&pooledClaim).Error; err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "claimPool query failed")
 	}
 	err = worker.UpdateClaimPool(pooledClaim, claimTxHash, txFrom, nonce)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "claimPoll update failed")
 	}
-	return "OK", err
+	return "OK", nil
 }
 func MoveToHistory(ctx *gin.Context) (interface{}, error) {
 	id := ctx.Query("id")
-	statusStr := ctx.Param("status")
+	statusStr := ctx.Query("status")
 	status, err := strconv.ParseUint(statusStr, 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	comment := ctx.Param("comment")
+	comment := ctx.Query("comment")
 	var pooledClaim models.ClaimPool
 	if err := database.DB.Where("id=?", id).
 		Take(&pooledClaim).Error; err != nil {

@@ -35,7 +35,7 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 
 	if deploy {
 		tag := infoFile
-		erc721aTmp, err := CreatePegged721(client, tag, "721-0", "p721-0", "https://baidu.com/")
+		erc721aTmp, err := CreatePegged721(client, tag, "721-0", "p721-0", "")
 		erc721a = erc721aTmp
 		showOwner(client, erc721a)
 
@@ -71,7 +71,12 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 	if reverse {
 		erc721a, erc721b = erc721b, erc721a
 	} else {
-		_, mintTxHash, _ := erc721aContract.SafeMint(buildGas(), account.MustGetCommonAddress(), big.NewInt(tokenId), "storage-uri-test721.json")
+		uri := "https://api.nftrainbow.cn/assets/metadata/102/nft/5eaee62bba91528fedb3acbc78e40ddb7fac8bf1639386c48698ceeff2ad792f.json"
+		_, mintTxHash, err := erc721aContract.SafeMint(buildGas(), account.MustGetCommonAddress(), big.NewInt(tokenId), uri)
+		if err != nil {
+			logrus.WithError(err).Error("mint fail")
+			return err
+		}
 		mintRcpt, _ := client.WaitForTransationReceipt(*mintTxHash, time.Second)
 		if mintRcpt.OutcomeStatus != 0 {
 			logrus.Error("mint fail, token id ", tokenId)

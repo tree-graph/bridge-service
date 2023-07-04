@@ -51,6 +51,7 @@ type Chain struct {
 	// possible values: cfx, evm
 	ChainType  string     `json:"chain_type"  binding:"required" gorm:"type:varchar(16) not null default 'cfx'"`
 	DelayBlock int        `json:"delay_block"  binding:"required" gorm:"not null"`
+	Enabled    bool       `json:"enabled"  binding:"" gorm:"not null default true"`
 	CreatedAt  *time.Time `json:"created_at,string,omitempty"`
 	UpdatedAt  *time.Time `json:"updated_at,string,omitempty"`
 }
@@ -138,7 +139,7 @@ type ClaimPool struct {
 	TargetContract string     `json:"target_contract" gorm:"type:char(66) not null"`
 	TxnHash        string     `json:"txn_hash" binding:"required" gorm:"unique,not null"`
 	From           string     `json:"from" gorm:"type:char(66) not null"`
-	Nonce          uint64     `json:"user_nonce" gorm:"not null"`
+	Nonce          uint64     `json:"nonce" gorm:"not null"`
 	Step           string     `json:"step" gorm:"type:varchar(16) not null"`
 	Status         *int64     `json:"status" gorm:""`
 	CreatedAt      *time.Time `json:"created_at,string,omitempty"`

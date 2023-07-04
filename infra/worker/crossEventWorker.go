@@ -46,6 +46,10 @@ func setup() ([]*CrossEventWorker, error) {
 		return nil, err
 	}
 	for _, chain := range chains {
+		if !chain.Enabled {
+			logrus.WithFields(logrus.Fields{"name": chain.Name}).Info("chain is disabled")
+			continue
+		}
 		if len(chain.VaultAddr) == 0 {
 			return nil, fmt.Errorf("vault address is empty, chain %v", chain.Id)
 		}

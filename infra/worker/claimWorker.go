@@ -162,7 +162,10 @@ func setupClaimWorkers() ([]*IClaimWorker, error) {
 	}
 	logrus.Debug("chain count ", len(chains))
 	for _, chain := range chains {
-
+		if !chain.Enabled {
+			logrus.Info("chain is disabled ", chain.Name)
+			continue
+		}
 		if err := blockchain.AddChainClient(chain); err != nil {
 			return nil, err
 		}
@@ -317,7 +320,9 @@ func BuildCrossRequest(crossInfo models.CrossInfo) (*vault.VaultCrossRequest, er
 		return nil, err
 	}
 
-	logrus.Debug("cross item count ", len(items))
+	logrus.WithFields(logrus.Fields{
+		"id": crossInfo.Id, "userNonce": crossInfo.UserNonce,
+	}).Debug("cross item count ", len(items))
 
 	var tokenIds []*big.Int
 	var amounts []*big.Int
