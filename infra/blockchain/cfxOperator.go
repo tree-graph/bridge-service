@@ -18,6 +18,33 @@ import (
 	"time"
 )
 
+func RegisterRouter(client sdk.Client, tag, local string, remote string, remoteDbId int64, isPegged bool) {
+	remoteAddr, err := cfxaddress.New(remote)
+	helpers.CheckFatalError("invalid remote address "+remote, err)
+
+	localAddr, err := cfxaddress.New(local)
+	helpers.CheckFatalError("invalid local address "+local, err)
+
+	remoteId := big.NewInt(remoteDbId)
+	// native(not pegged as) default
+	arrivalOp := tokens.TRANSFER           // unlock from vault
+	arrivalUriMode := tokens.UriModeNotSet // native contract holds its uri
+	departureOp := tokens.OpNotSet         // nothing
+	departureUriMode := tokens.STORAGE     // track uri when leaving
+	if isPegged {                          // register on pegged chain
+		arrivalOp = tokens.MINT
+		departureOp = tokens.BURN721
+		arrivalUriMode = tokens.STORAGE         // set uri when reaching pegged chain
+		departureUriMode = tokens.UriModeNotSet // nothing when leaving pegged chain
+	}
+	logrus.Info("show var", arrivalOp, arrivalUriMode)
+	//err = RegisterArrival(client, tag, remoteAddr, remoteId, localAddr, arrivalOp, arrivalUriMode)
+	//helpers.CheckFatalError("RegisterArrival ", err)
+
+	err = RegisterDeparture(client, tag, localAddr, remoteId, remoteAddr, departureOp, departureUriMode)
+	helpers.CheckFatalError("RegisterDeparture ", err)
+}
+
 func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, claim bool, reverse bool, chDbId int64) error {
 	// consortium chain may have duplicate chain id. we use a logic db id instead.
 	chainDbId := big.NewInt(chDbId)
@@ -228,7 +255,7 @@ func encode(bi *big.Int, addr common.Address) ([]byte, error) {
 
 func RegisterDeparture(client sdk.Client, infoFile string, localContract types.Address,
 	dstChain *big.Int, dstContract types.Address, op, uriMode uint8) error {
-	logrus.Info(`registerDeparture`)
+	logrus.Info(`registerDeparture to chain `, *dstChain)
 	var addr, _ = cfxaddress.New(ReadInfo(infoFile, "proxyTokenVault"))
 	vault, err := tokens.NewTokenVaultTransactor(addr, &client)
 	helpers.CheckFatalError("NewTokenVaultTransactor", err)
@@ -250,7 +277,7 @@ func RegisterDeparture(client sdk.Client, infoFile string, localContract types.A
 
 func RegisterArrival(client sdk.Client, infoFile string,
 	srcContract types.Address, srcChain *big.Int, localContract types.Address, op uint8, uriMode uint8) error {
-	logrus.Info(`registerArrival`)
+	logrus.Info(`registerArrival from chain `, *srcChain)
 	var addr, _ = cfxaddress.New(ReadInfo(infoFile, "proxyTokenVault"))
 	vault, err := tokens.NewTokenVaultTransactor(addr, &client)
 	helpers.CheckFatalError("NewTokenVaultTransactor", err)
@@ -297,5 +324,8 @@ func CreatePegged721(client sdk.Client, infoFile string, name string, symbol str
 }
 
 func buildGas() *bind.TransactOpts {
-	return &bind.TransactOpts{Gas: types.NewBigInt(GAS)}
+	return &bind.TransactOpts{Gas: types.NewBigInt(GAS),
+		GasPrice: types.NewBigInt(90_000_000_000),
+		//Nonce: types.NewBigInt(66),
+	}
 }
