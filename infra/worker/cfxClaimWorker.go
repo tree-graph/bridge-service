@@ -7,12 +7,14 @@ import (
 	"github.com/Conflux-Chain/go-conflux-sdk/types"
 	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/infra/blockchain"
 	"github.com/tree-graph/bridge-service/infra/contracts/tokens"
 	"github.com/tree-graph/bridge-service/infra/database"
 	"github.com/tree-graph/bridge-service/models"
 	"math/big"
+	"strings"
 	"time"
 )
 
@@ -66,13 +68,11 @@ func (worker CfxClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64,
 	}
 	vaultAddr, err := cfxaddress.New(worker.Chain.VaultAddr)
 	if err != nil {
-		logrus.Debug("cfx claim fail")
-		return "", nil, err
+		return "", nil, errors.WithMessage(err, "parse vault addr fail")
 	}
 	vault, err := tokens.NewTokenVaultTransactor(vaultAddr, worker.CfxClient)
 	if err != nil {
-		logrus.Debug("tokens.NewTokenVaultTransactor fail")
-		return "", nil, err
+		return "", nil, errors.WithMessage(err, "tokens.NewTokenVaultTransactor fail")
 	}
 
 	var tokenIds []*big.Int
@@ -84,13 +84,22 @@ func (worker CfxClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64,
 		uris = append(uris, item.Uri)
 	}
 	req := crossInfo
+	hexIssuer := common.HexToAddress(req.From)
+	srcChainId := big.NewInt(req.SourceChain)
 	utx, claimTxHash, err := vault.ClaimByAdmin(buildGas(),
-		big.NewInt(req.TargetChain), common.HexToAddress(req.Asset), common.HexToAddress(req.TargetContract),
+		srcChainId, common.HexToAddress(req.Asset), common.HexToAddress(req.TargetContract),
 		tokenIds, amounts, uris,
-		common.HexToAddress(req.From), big.NewInt(req.UserNonce))
+		hexIssuer, big.NewInt(req.UserNonce))
 	if err != nil {
-		logrus.Debug("cfx claim by admin fail")
-		return "", nil, err
+		if strings.Contains(err.Error(), "bad user claim nonce") {
+			vaultCaller, _ := tokens.NewTokenVaultCaller(vaultAddr, worker.CfxClient)
+			n, err := vaultCaller.GetUserNextClaimNonce(&bind.CallOpts{
+				EpochNumber: types.EpochLatestState,
+			}, hexIssuer, srcChainId)
+			logrus.Info("GetUserNextClaimNonce ", n, " error ", err)
+			logrus.Info("off-chain claim nonce ", req.UserNonce, " src chain ", req.SourceChain)
+		}
+		return "", nil, errors.WithMessage(err, "cfx claim by admin fail")
 	}
 
 	nonce := utx.Nonce.ToInt().Uint64()

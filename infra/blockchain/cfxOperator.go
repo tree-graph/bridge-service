@@ -54,8 +54,8 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 	reverse bool, chDbId int64) error {
 	// consortium chain may have duplicate chain id. we use a logic db id instead.
 	chainDbId := big.NewInt(chDbId)
-	netId, _ := client.GetNetworkID()
-	chainId := big.NewInt(int64(netId))
+	//netId, _ := client.GetNetworkID()
+	//chainId := big.NewInt(int64(netId))
 	account, _ := client.AccountManager.GetDefault()
 	if tokenId < 1 {
 		tokenId = time.Now().Unix()
@@ -64,7 +64,7 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 	var erc721b *types.Address
 	pegInfoFile := "./pegInfo.json"
 	var vaultProxy, _ = cfxaddress.New(ReadInfo(infoFile, "proxyTokenVault"))
-	DumpTokenVaultInfo(client, vaultProxy, *account, chainId)
+	DumpTokenVaultInfo(client, vaultProxy, *account, chainDbId)
 
 	if deploy {
 		tag := infoFile
@@ -222,7 +222,7 @@ func DumpTokenVaultInfo(client sdk.Client, vaultAddr, account types.Address, cha
 	logrus.Info("has role CLAIM_ON_VAULT ", has, " ", err)
 
 	n, err := vault.GetUserNextClaimNonce(buildCallOpt(client), account.MustGetCommonAddress(), chainId)
-	logrus.Info("GetUserNextClaimNonce ", n, err)
+	logrus.WithFields(logrus.Fields{"remote chain id": chainId}).Info("GetUserNextClaimNonce ", n, err)
 }
 
 func GetCrossRequest(client sdk.Client, vaultProxy *types.Address, rcpt *types.TransactionReceipt, transferTxHash *types.Hash) *tokens.TokenVaultCrossRequest {

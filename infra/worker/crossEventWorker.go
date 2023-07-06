@@ -184,7 +184,9 @@ func (worker CrossEventWorker) doWork() (int, error) {
 		return 0, err
 	}
 	if len(parsedLogs) == 0 {
-		logEntry.Debug("no logs")
+		if currentBlock%10 == 0 {
+			logEntry.Debug("no logs")
+		}
 		return 0, database.DB.Model(&cursor).Where("id = ?", chainDbId).Update("block", currentBlock).Error
 	}
 
