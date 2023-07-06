@@ -49,7 +49,9 @@ func RegisterRouter(client sdk.Client, tag, local string, remote string, remoteD
 	helpers.CheckFatalError("RegisterDeparture ", err)
 }
 
-func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, claim bool, reverse bool, chDbId int64) error {
+func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, claim bool,
+	remote string,
+	reverse bool, chDbId int64) error {
 	// consortium chain may have duplicate chain id. we use a logic db id instead.
 	chainDbId := big.NewInt(chDbId)
 	netId, _ := client.GetNetworkID()
@@ -97,11 +99,21 @@ func Test721(client sdk.Client, infoFile string, tokenId int64, deploy bool, cla
 		erc721bRef := cfxaddress.MustNew(ReadInfo(pegInfoFile, "erc721b"))
 		erc721b = &erc721bRef
 	}
+	if remote != "" {
+		remoteAddr := cfxaddress.MustNew(remote)
+		if reverse {
+			// b->a, a is remote
+			erc721a = &remoteAddr
+		} else {
+			// a->b, b is remote
+			erc721b = &remoteAddr
+		}
+	}
 	//
-	erc721aContract, _ := tokens.NewPeggedERC721Transactor(*erc721a, &client)
 	if reverse {
 		erc721a, erc721b = erc721b, erc721a
 	} else {
+		erc721aContract, _ := tokens.NewPeggedERC721Transactor(*erc721a, &client)
 		uri := "https://api.nftrainbow.cn/assets/metadata/102/nft/5eaee62bba91528fedb3acbc78e40ddb7fac8bf1639386c48698ceeff2ad792f.json"
 		_, mintTxHash, err := erc721aContract.SafeMint(buildGas(), account.MustGetCommonAddress(), big.NewInt(tokenId), uri)
 		if err != nil {
@@ -131,7 +143,7 @@ func Cross721(client sdk.Client,
 	erc721, err := tokens.NewPeggedERC721Transactor(*erc721a, &client)
 	logrus.Info("transfer from ", account.GetHexAddress(), " to ", vaultProxy.GetHexAddress())
 
-	showOwner(client, erc721b)
+	//showOwner(client, erc721b)
 	logrus.Info("token vault : ", vaultProxy, " ", vaultProxy.GetHexAddress())
 
 	_, transferTxHash, err := erc721.SafeTransferFrom0(buildGas(), account.MustGetCommonAddress(), vaultProxy.MustGetCommonAddress(), big.NewInt(tokenId), data)
