@@ -140,11 +140,16 @@ func Cross721(client sdk.Client,
 
 	remoteHex := erc721b.MustGetCommonAddress()
 	data, err := encode(dstChain, remoteHex)
-	logrus.Info("abi encoded data ", hexutil.Encode(data))
-	erc721, err := tokens.NewPeggedERC721Transactor(*erc721a, &client)
-	logrus.Info("token contract ", *erc721a)
+	//logrus.Info("abi encoded data ", hexutil.Encode(data))
+	erc721, _ := tokens.NewPeggedERC721Transactor(*erc721a, &client)
+	erc721caller, _ := tokens.NewPeggedERC721Caller(*erc721a, &client)
+
+	logrus.Info("token contract ", *erc721a, " hex ", erc721a.MustGetCommonAddress())
+	logrus.Info("remote contract ", *erc721b, " hex ", erc721b.MustGetCommonAddress())
 	logrus.Info("transfer from ", account.GetHexAddress(), " to ", vaultProxy.GetHexAddress())
 
+	tokenOwner, err := erc721caller.OwnerOf(buildCallOpt(client), big.NewInt(tokenId))
+	logrus.Infof("token %v owner is %v \n", tokenId, tokenOwner)
 	//showOwner(client, erc721b)
 	logrus.Info("token vault : ", vaultProxy, " ", vaultProxy.GetHexAddress())
 
@@ -168,7 +173,7 @@ func Cross721(client sdk.Client,
 	helpers.CheckFatalError("WaitForTransationReceipt", err)
 	if rcpt.OutcomeStatus != 0 {
 		logrus.Error("SafeTransferFrom0 tx failed with error : ", rcpt.TxExecErrorMsg, " hash ", transferTxHash)
-		DumpArrival(client, vaultReader)
+		DumpDeparture(client, vaultReader)
 		return
 	}
 
