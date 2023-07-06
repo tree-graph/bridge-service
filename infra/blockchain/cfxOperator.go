@@ -285,6 +285,11 @@ func RegisterArrival(client sdk.Client, infoFile string,
 	var addr, _ = cfxaddress.New(ReadInfo(infoFile, "proxyTokenVault"))
 	vault, err := tokens.NewTokenVaultTransactor(addr, &client)
 	helpers.CheckFatalError("NewTokenVaultTransactor", err)
+	vaultReader, err := tokens.NewTokenVaultCaller(addr, &client)
+	helpers.CheckFatalError("NewTokenVaultCaller", err)
+
+	eip, err := vaultReader.DetectLocalEIP(buildCallOpt(client), localContract.MustGetCommonAddress())
+	logrus.Debug("local eip ", eip, " error ", err)
 
 	srcHex := srcContract.MustGetCommonAddress()
 	localHex := localContract.MustGetCommonAddress()
