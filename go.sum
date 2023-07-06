@@ -70,6 +70,8 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/Conflux-Chain/go-conflux-sdk v1.0.29/go.mod h1:eUYR736AUkH29rjeiPCLR2XXpH9stG2+NbztAXz1rJw=
 github.com/Conflux-Chain/go-conflux-sdk v1.5.0 h1:56VeZnCGQ9+qGzAoc3KjDAtvcXOWdn9zsCGfTvNMADo=
 github.com/Conflux-Chain/go-conflux-sdk v1.5.0/go.mod h1:AT2yegWF8WGQTUlM++6rGoLUnAY6P2MWvft9AgDoYb0=
+github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230602033356-dd66f68dfd0b h1:dRNn9NbTHZKh/VZK6mcz+VPpjAVhKp816i+OHaoRzpU=
+github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230602033356-dd66f68dfd0b/go.mod h1:GUz2jHG1zFc8SmVlD6fKH8MU0IOKa+wN4wMzTnghuYg=
 github.com/Conflux-Chain/go-conflux-util v0.1.0 h1:Ljnq6JwIc14XyAieyZOo2oyPAC7P2UhWH8akgZ625Mo=
 github.com/Conflux-Chain/go-conflux-util v0.1.0/go.mod h1:w2Ns80q8u9GfEvzrd18QvZUtlP3EmzVq9w8lZuY8uwk=
 github.com/DATA-DOG/go-sqlmock v1.3.3/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=
@@ -554,7 +556,10 @@ github.com/opentracing/opentracing-go v1.1.0/go.mod h1:UkNAQd3GIcIGf0SeVgPpRdFSt
 github.com/openweb3/go-rpc-provider v0.3.0/go.mod h1:DYz40TbzhzyTA06UFqGIKSXp0uFot6ZKh4QarD//eZ0=
 github.com/openweb3/go-rpc-provider v0.3.1 h1:3BEl9ZbchZAKId70QhvRSKnst6oue1ew6nAigArUbp4=
 github.com/openweb3/go-rpc-provider v0.3.1/go.mod h1:DYz40TbzhzyTA06UFqGIKSXp0uFot6ZKh4QarD//eZ0=
+github.com/openweb3/go-sdk-common v0.0.0-20220720074746-a7134e1d372c h1:BrPXZpkTdmZe5bNjSSnxWqL44X9FcZ3xftLcYNkIJ68=
 github.com/openweb3/go-sdk-common v0.0.0-20220720074746-a7134e1d372c/go.mod h1:0WCVKMiLiYEaHhpQWQ3rgLti/Fv/+JPRiB0sEoovwk8=
+github.com/openweb3/web3go v0.2.5 h1:38mYsKkvGlujI6xJlcJDlvgTZtLgnU4nr0GR0i8Fbwk=
+github.com/openweb3/web3go v0.2.5/go.mod h1:oiiUgYd/A1D6ZX8PjVnWZGX4aUn/n8DlSLFyrsqQg1k=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/paulbellamy/ratecounter v0.2.0/go.mod h1:Hfx1hDpSGoqxkVVpBi/IlYD7kChlfo5C6hzIHwPqfFE=

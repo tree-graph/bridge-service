@@ -246,7 +246,7 @@ func GetCrossRequest(client sdk.Client, vaultProxy *types.Address, rcpt *types.T
 		logrus.Error("crossRequest event not found in tx ", transferTxHash)
 		return nil
 	}
-	logrus.WithFields(logrus.Fields{"epoch": uint64(*rcpt.EpochNumber)}).Info("found crossRequest event , tx ", transferTxHash)
+	logrus.WithFields(logrus.Fields{"epoch": rcpt.EpochNumber}).Info("found crossRequest event , tx ", transferTxHash)
 	return req
 }
 

@@ -24,8 +24,8 @@ require (
 )
 
 require (
-	//github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230602033356-dd66f68dfd0b
-	github.com/Conflux-Chain/go-conflux-sdk v1.5.0
+	github.com/Conflux-Chain/go-conflux-sdk v1.5.7-0.20230602033356-dd66f68dfd0b
+	//github.com/Conflux-Chain/go-conflux-sdk v1.5.0
 	github.com/StackExchange/wmi v0.0.0-20180116203802-5d049714c4a6 // indirect
 	github.com/btcsuite/btcd v0.21.0-beta // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
