@@ -290,6 +290,7 @@ func RegisterArrival(client sdk.Client, infoFile string,
 
 	eip, err := vaultReader.DetectLocalEIP(buildCallOpt(client), localContract.MustGetCommonAddress())
 	logrus.Debug("local eip ", eip, " error ", err)
+	DumpRouter(client, vaultReader)
 
 	srcHex := srcContract.MustGetCommonAddress()
 	localHex := localContract.MustGetCommonAddress()
@@ -297,9 +298,10 @@ func RegisterArrival(client sdk.Client, infoFile string,
 		"src": srcHex, "local": localHex,
 	}).Info("hex address")
 
-	_, hash, _ := vault.RegisterArrival(buildGas(),
+	_, hash, err := vault.RegisterArrival(buildGas(),
 		srcHex,
 		srcChain, op, uriMode, localHex)
+	helpers.CheckFatalError("RegisterArrival tx.", err)
 	receipt, err := client.WaitForTransationReceipt(*hash, time.Second)
 	helpers.CheckFatalError("RegisterArrival tx fail.", err)
 
@@ -309,6 +311,33 @@ func RegisterArrival(client sdk.Client, infoFile string,
 		return retE
 	}
 	return nil
+}
+
+func DumpRouter(client sdk.Client, reader *tokens.TokenVaultCaller) {
+	opt := buildCallOpt(client)
+	big0 := big.NewInt(0)
+	big100 := big.NewInt(100)
+	remoteArr, cnt, err := reader.ListArrivalIndex(opt, big0, big100)
+	helpers.CheckFatalError("ListArrivalIndex", err)
+	logrus.Info("dump arrival")
+	for i := int64(0); i < cnt.Int64(); i++ {
+		remoteAddr := remoteArr[i]
+		logrus.Info("remoteAddr ", remoteAddr)
+		chains, _, err := reader.ListArrivalChainIndex(opt, remoteAddr, big0, big100)
+		helpers.CheckFatalError("ListArrivalChainIndex", err)
+		for _, ch := range chains {
+			logrus.Infof("\t chain %v \n", ch.Int64())
+			peer, _, err := reader.ListArrivalPeerIndex(opt, remoteAddr, ch, big0, big100)
+			helpers.CheckFatalError("ListArrivalPeerIndex", err)
+			for _, p := range peer {
+				logrus.Infof("\t\t peer %v \n", p)
+				info, err := reader.GetArrivalInfo(opt, remoteAddr, ch, p)
+				helpers.CheckFatalError("GetArrivalInfo", err)
+				marshal, _ := json.Marshal(info)
+				logrus.Info("\t\t\t peer ", string(marshal))
+			}
+		}
+	}
 }
 
 func ReadInfo(infoFile, key string) string {
