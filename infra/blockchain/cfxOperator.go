@@ -41,7 +41,7 @@ func RegisterRouter(client sdk.Client, tag, local string, remote string, remoteD
 		arrivalUriMode = tokens.STORAGE         // set uri when reaching pegged chain
 		departureUriMode = tokens.UriModeNotSet // nothing when leaving pegged chain
 	}
-	logrus.Info("show var", arrivalOp, arrivalUriMode)
+	logrus.Info("show var ", arrivalOp, arrivalUriMode)
 	err = RegisterArrival(client, tag, remoteAddr, remoteId, localAddr, arrivalOp, arrivalUriMode)
 	helpers.CheckFatalError("RegisterArrival ", err)
 
@@ -246,7 +246,7 @@ func GetCrossRequest(client sdk.Client, vaultProxy *types.Address, rcpt *types.T
 		logrus.Error("crossRequest event not found in tx ", transferTxHash)
 		return nil
 	}
-	logrus.WithFields(logrus.Fields{"epoch": rcpt.EpochNumber.String()}).Info("found crossRequest event , tx ", transferTxHash)
+	logrus.WithFields(logrus.Fields{"epoch": uint64(*rcpt.EpochNumber)}).Info("found crossRequest event , tx ", transferTxHash)
 	return req
 }
 
