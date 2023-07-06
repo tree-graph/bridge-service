@@ -19,6 +19,10 @@ import (
 )
 
 func RegisterRouter(client sdk.Client, tag, local string, remote string, remoteDbId int64, isPegged bool) {
+	logrus.WithFields(logrus.Fields{
+		"local": local, "remote": remote, "remoteDbId": remoteDbId, "isPegged": isPegged,
+	}).Info("RegisterRouter")
+
 	remoteAddr, err := cfxaddress.New(remote)
 	helpers.CheckFatalError("invalid remote address "+remote, err)
 
@@ -38,8 +42,8 @@ func RegisterRouter(client sdk.Client, tag, local string, remote string, remoteD
 		departureUriMode = tokens.UriModeNotSet // nothing when leaving pegged chain
 	}
 	logrus.Info("show var", arrivalOp, arrivalUriMode)
-	//err = RegisterArrival(client, tag, remoteAddr, remoteId, localAddr, arrivalOp, arrivalUriMode)
-	//helpers.CheckFatalError("RegisterArrival ", err)
+	err = RegisterArrival(client, tag, remoteAddr, remoteId, localAddr, arrivalOp, arrivalUriMode)
+	helpers.CheckFatalError("RegisterArrival ", err)
 
 	err = RegisterDeparture(client, tag, localAddr, remoteId, remoteAddr, departureOp, departureUriMode)
 	helpers.CheckFatalError("RegisterDeparture ", err)
@@ -282,9 +286,15 @@ func RegisterArrival(client sdk.Client, infoFile string,
 	vault, err := tokens.NewTokenVaultTransactor(addr, &client)
 	helpers.CheckFatalError("NewTokenVaultTransactor", err)
 
+	srcHex := srcContract.MustGetCommonAddress()
+	localHex := localContract.MustGetCommonAddress()
+	logrus.WithFields(logrus.Fields{
+		"src": srcHex, "local": localHex,
+	}).Info("hex address")
+
 	_, hash, _ := vault.RegisterArrival(buildGas(),
-		srcContract.MustGetCommonAddress(),
-		srcChain, op, uriMode, localContract.MustGetCommonAddress())
+		srcHex,
+		srcChain, op, uriMode, localHex)
 	receipt, err := client.WaitForTransationReceipt(*hash, time.Second)
 	helpers.CheckFatalError("RegisterArrival tx fail.", err)
 
