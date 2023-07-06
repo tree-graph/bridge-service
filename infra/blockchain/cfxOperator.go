@@ -263,11 +263,23 @@ func RegisterDeparture(client sdk.Client, infoFile string, localContract types.A
 	var addr, _ = cfxaddress.New(ReadInfo(infoFile, "proxyTokenVault"))
 	vault, err := tokens.NewTokenVaultTransactor(addr, &client)
 	helpers.CheckFatalError("NewTokenVaultTransactor", err)
-	//await vault.registerDeparture(localContract, dstChain, op, uriMode, dstContract).then(waitTx)
+	vaultReader, err := tokens.NewTokenVaultCaller(addr, &client)
+	helpers.CheckFatalError("NewTokenVaultCaller", err)
+
+	localHex := localContract.MustGetCommonAddress()
+	remoteHex := dstContract.MustGetCommonAddress()
+
+	info, err := vaultReader.GetDepartureInfo(buildCallOpt(client), localHex, dstChain, remoteHex)
+	marshal, _ := json.Marshal(info)
+	logrus.Info("check peer info exists ", string(marshal), " error ", err)
+	if info.Timestamp.Cmp(big.NewInt(0)) > 0 {
+		logrus.Info("already registered")
+		return nil
+	}
 
 	_, hash, _ := vault.RegisterDeparture(buildGas(),
-		localContract.MustGetCommonAddress(),
-		dstChain, op, uriMode, dstContract.MustGetCommonAddress())
+		localHex,
+		dstChain, op, uriMode, remoteHex)
 	receipt, err := client.WaitForTransationReceipt(*hash, time.Second)
 	helpers.CheckFatalError("registerDeparture tx fail.", err)
 
@@ -290,10 +302,18 @@ func RegisterArrival(client sdk.Client, infoFile string,
 
 	eip, err := vaultReader.DetectLocalEIP(buildCallOpt(client), localContract.MustGetCommonAddress())
 	logrus.Debug("local eip ", eip, " error ", err)
-	DumpRouter(client, vaultReader)
 
 	srcHex := srcContract.MustGetCommonAddress()
 	localHex := localContract.MustGetCommonAddress()
+
+	info, err := vaultReader.GetArrivalInfo(buildCallOpt(client), srcHex, srcChain, localHex)
+	marshal, _ := json.Marshal(info)
+	logrus.Info("check peer info exists ", string(marshal), " error ", err)
+	if info.Timestamp.Cmp(big.NewInt(0)) > 0 {
+		logrus.Info("already registered")
+		return nil
+	}
+
 	logrus.WithFields(logrus.Fields{
 		"src": srcHex, "local": localHex,
 	}).Info("hex address")
@@ -301,6 +321,9 @@ func RegisterArrival(client sdk.Client, infoFile string,
 	_, hash, err := vault.RegisterArrival(buildGas(),
 		srcHex,
 		srcChain, op, uriMode, localHex)
+	if err != nil {
+		DumpRouter(client, vaultReader)
+	}
 	helpers.CheckFatalError("RegisterArrival tx.", err)
 	receipt, err := client.WaitForTransationReceipt(*hash, time.Second)
 	helpers.CheckFatalError("RegisterArrival tx fail.", err)
