@@ -138,13 +138,29 @@ func Cross721(client sdk.Client,
 	dstChain *big.Int, erc721b *types.Address, tokenId int64, claim bool) {
 	account, _ := client.AccountManager.GetDefault()
 
-	data, err := encode(dstChain, erc721b.MustGetCommonAddress())
+	remoteHex := erc721b.MustGetCommonAddress()
+	data, err := encode(dstChain, remoteHex)
 	logrus.Info("abi encoded data ", hexutil.Encode(data))
 	erc721, err := tokens.NewPeggedERC721Transactor(*erc721a, &client)
+	logrus.Info("token contract ", *erc721a)
 	logrus.Info("transfer from ", account.GetHexAddress(), " to ", vaultProxy.GetHexAddress())
 
 	//showOwner(client, erc721b)
 	logrus.Info("token vault : ", vaultProxy, " ", vaultProxy.GetHexAddress())
+
+	vaultReader, err := tokens.NewTokenVaultCaller(*vaultProxy, &client)
+	helpers.CheckFatalError("NewTokenVaultCaller", err)
+
+	//check departure
+	localHex := erc721a.MustGetCommonAddress()
+	info, err := vaultReader.GetDepartureInfo(buildCallOpt(client), localHex, dstChain, remoteHex)
+	helpers.CheckFatalError("GetDepartureInfo", err)
+	if info.Timestamp.Cmp(big.NewInt(0)) == 0 {
+		logrus.Warn("departure info not exists , local ", localHex, " remote ", remoteHex)
+		DumpDeparture(client, vaultReader)
+	} else {
+		logrus.Info("departure exists ")
+	}
 
 	_, transferTxHash, err := erc721.SafeTransferFrom0(buildGas(), account.MustGetCommonAddress(), vaultProxy.MustGetCommonAddress(), big.NewInt(tokenId), data)
 	helpers.CheckFatalError("erc721 SafeTransferFrom", err)
@@ -152,6 +168,7 @@ func Cross721(client sdk.Client,
 	helpers.CheckFatalError("WaitForTransationReceipt", err)
 	if rcpt.OutcomeStatus != 0 {
 		logrus.Error("SafeTransferFrom0 tx failed with error : ", rcpt.TxExecErrorMsg, " hash ", transferTxHash)
+		DumpArrival(client, vaultReader)
 		return
 	}
 
@@ -334,7 +351,7 @@ func RegisterArrival(client sdk.Client, infoFile string,
 		srcHex,
 		srcChain, op, uriMode, localHex)
 	if err != nil {
-		DumpRouter(client, vaultReader)
+		DumpArrival(client, vaultReader)
 	}
 	helpers.CheckFatalError("RegisterArrival tx.", err)
 	receipt, err := client.WaitForTransationReceipt(*hash, time.Second)
@@ -348,7 +365,34 @@ func RegisterArrival(client sdk.Client, infoFile string,
 	return nil
 }
 
-func DumpRouter(client sdk.Client, reader *tokens.TokenVaultCaller) {
+func DumpDeparture(client sdk.Client, reader *tokens.TokenVaultCaller) {
+	opt := buildCallOpt(client)
+	big0 := big.NewInt(0)
+	big100 := big.NewInt(100)
+	remoteArr, cnt, err := reader.ListDepartureIndex(opt, big0, big100)
+	helpers.CheckFatalError("ListDepartureIndex", err)
+	logrus.Info("dump Departure")
+	for i := int64(0); i < cnt.Int64(); i++ {
+		remoteAddr := remoteArr[i]
+		logrus.Info("remoteAddr ", remoteAddr)
+		chains, _, err := reader.ListDepartureChainIndex(opt, remoteAddr, big0, big100)
+		helpers.CheckFatalError("ListDepartureChainIndex", err)
+		for _, ch := range chains {
+			logrus.Infof("\t chain %v \n", ch.Int64())
+			peer, _, err := reader.ListDeparturePeerIndex(opt, remoteAddr, ch, big0, big100)
+			helpers.CheckFatalError("ListDeparturePeerIndex", err)
+			for _, p := range peer {
+				logrus.Infof("\t\t peer %v \n", p)
+				info, err := reader.GetDepartureInfo(opt, remoteAddr, ch, p)
+				helpers.CheckFatalError("GetDepartureInfo", err)
+				marshal, _ := json.Marshal(info)
+				logrus.Info("\t\t\t peer ", string(marshal))
+			}
+		}
+	}
+}
+
+func DumpArrival(client sdk.Client, reader *tokens.TokenVaultCaller) {
 	opt := buildCallOpt(client)
 	big0 := big.NewInt(0)
 	big100 := big.NewInt(100)
