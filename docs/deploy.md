@@ -43,7 +43,7 @@ For golang supported chains,
 - `-t` it's a test flag
 - `-D` do deployment flag. It will deploy a ERC721 contract, and a pegged ERC721 contract, and register 4 routes on the same chain.
 - `--tid 1` use 1 as token id. It will mint a token with that id. so it should be different under certain case.
-- `--cid 1001` use 1001 as logical chain id, see [here](architecture.md) for explanation.
+- `--cid 1001` use 1001 as logical chain id, see [here](overview.md) for explanation.
 
 This command will:
 - creates a ERC721 contract(erc721a)

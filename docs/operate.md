@@ -22,7 +22,7 @@ store:
 ## config database
 Each chain must have a Token vault contract, get it from [here](deploy.md).
 
-Each chain has a unique logical id, explained [here](architecture.md).
+Each chain has a unique logical id, explained [here](overview.md).
 
 ### config chains
 The table `chains`:

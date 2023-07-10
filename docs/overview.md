@@ -1,5 +1,5 @@
-#System Architecture
-For now, it's a centralized bridge. 
+# Overview
+For now, it's a centralized bridge without UI.
 
 ## Main steps
 The main steps to cross a NFT from one chain to another are listed below:
