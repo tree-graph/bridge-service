@@ -7,7 +7,6 @@ import (
 	"github.com/Conflux-Chain/go-conflux-sdk/types/cfxaddress"
 	"github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/infra/contracts/tokens"
 	"github.com/tree-graph/bridge-service/infra/contracts/vault"
@@ -26,9 +25,10 @@ func GetCfxClient() *sdk.Client {
 }
 
 func NewCfxFetcher(chain int64, vaultAddr string, client *sdk.Client) (*CfxFetcher, error) {
-	filter, err := tokens.NewTokenVaultFilterer(cfxaddress.MustNewFromHex(vaultAddr, uint32(chain)), client)
+	filter, err := tokens.NewTokenVaultFilterer(cfxaddress.MustNewFromBase32(vaultAddr), client)
 	if err != nil {
-		return nil, errors.WithMessage(err, "NewTokenVaultFilterer by cfx fail")
+		logrus.WithError(err).Error("NewTokenVaultFilterer by cfx fail")
+		return nil, err
 	}
 	fetcher := CfxFetcher{
 		Client: *client, filter: filter, vaultAddr: vaultAddr,
@@ -54,12 +54,16 @@ func (fetcher CfxFetcher) Fetch(epoch uint64) (*time.Time, []*vault.VaultCrossRe
 
 	iter, err := fetcher.filter.FilterCrossRequest(fetcher.filterOpts, nil, nil)
 	if err != nil {
-		return nil, nil, errors.WithMessage(err, "query cfx logs fail")
+		logrus.WithError(err).Error("query cfx logs fail, epoch ", epoch)
+		return nil, nil, err
 	}
 	var matchedLogs []*vault.VaultCrossRequest
 	for iter.Next() {
 		log := iter.Event
-		if log.Raw.Address.GetHexAddress() != fetcher.vaultAddr {
+		if log.Raw.Address.String() != fetcher.vaultAddr {
+			logrus.WithFields(logrus.Fields{
+				"want": fetcher.vaultAddr, "actual": log.Raw.Address,
+			}).Debug("vault address mismatch")
 			continue
 		}
 		matchedLogs = append(matchedLogs, convertLog(log))

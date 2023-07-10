@@ -177,7 +177,8 @@ func WaitDeployTx(client sdk.Client, err error, hash *types.Hash, name string) (
 		for _, log := range receipt.Logs {
 			log721, err := filter.ParseERC721CREATED(log)
 			if err == nil && *log721.Raw.Topics[0].ToCommonHash() == eventID {
-				contractCreated, err := cfxaddress.New(log721.Artifact.Hex(), 1029)
+				chainId, _ := client.GetNetworkID()
+				contractCreated, err := cfxaddress.New(log721.Artifact.Hex(), chainId)
 				helpers.CheckFatalError("ParseERC721CREATED ", err)
 				receipt.ContractCreated = &contractCreated
 			}
