@@ -20,6 +20,7 @@ import (
 type EvmHandler struct {
 	Client  *ethclient.Client
 	ChainId int64
+	Chain   models.Chain
 }
 
 func (evm EvmHandler) TransactionByHash(hash string) (*types.Transaction, bool, error) {
@@ -52,7 +53,8 @@ func AddChainClient(chain models.Chain) error {
 	}
 	clients[chain.Id] = EvmHandler{
 		Client:  client,
-		ChainId: chain.Id,
+		ChainId: chain.ChainId,
+		Chain:   chain,
 	}
 	logrus.WithFields(logrus.Fields{
 		"id": chain.Id, "name": chain.Name, "rpc": chain.Rpc,

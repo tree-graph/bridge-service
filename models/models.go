@@ -37,12 +37,19 @@ type Config struct {
 	Content string `json:"content" binding:"required"`
 }
 
+const CfxChain = "cfx"
+const EvmChain = "evm"
+
 // chain config
 type Chain struct {
-	Id         int64      `json:"id" gorm:"primary_key"`
-	Name       string     `json:"hash" binding:"required" gorm:"unique,not null"`
-	VaultAddr  string     `json:"vault_addr" binding:"required" gorm:"not null"`
-	Rpc        string     `json:"rpc"  binding:"required" gorm:"not null"`
+	Id int64 `json:"id" gorm:"primary_key"`
+	// chain id for consortium chain may be duplicate. It's 1029 for now(2023.6.20).
+	ChainId   int64  `json:"chain_id" binding:"required" gorm:"type:int not null"`
+	Name      string `json:"hash" binding:"required" gorm:"unique,not null"`
+	VaultAddr string `json:"vault_addr" binding:"required" gorm:"type:varchar(66) not null"`
+	Rpc       string `json:"rpc"  binding:"required" gorm:"type:varchar(256) not null"`
+	// possible values: cfx, evm
+	ChainType  string     `json:"chain_type"  binding:"required" gorm:"type:varchar(16) not null default 'cfx'"`
 	DelayBlock int        `json:"delay_block"  binding:"required" gorm:"not null"`
 	CreatedAt  *time.Time `json:"created_at,string,omitempty"`
 	UpdatedAt  *time.Time `json:"updated_at,string,omitempty"`
@@ -59,8 +66,8 @@ type Secret struct {
 	Id        int64      `json:"id" gorm:"primary_key"`
 	ChainId   int64      `json:"chain_id" gorm:"unique"`
 	Private   string     `json:"private" binding:"required" gorm:"char(66),not null"`
-	Address   string     `json:"address" binding:"" gorm:"char(42)"`
-	Comment   string     `json:"comment" binding:"" gorm:"varchar(1024)"`
+	Address   string     `json:"address" binding:"" gorm:"type:varchar(66)"`
+	Comment   string     `json:"comment" binding:"" gorm:"type:varchar(1024)"`
 	CreatedAt *time.Time `json:"created_at,string,omitempty"`
 	UpdatedAt *time.Time `json:"updated_at,string,omitempty"`
 }

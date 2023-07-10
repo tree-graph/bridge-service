@@ -5,7 +5,9 @@ import (
 	"crypto/ecdsa"
 	"errors"
 	"fmt"
+	sdk "github.com/Conflux-Chain/go-conflux-sdk"
 	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/keystore"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
@@ -26,13 +28,18 @@ import (
  *	3 put a record in pooled claiming table and update cursor.
  *	4 back to step 0.
  */
+type IClaimWorker interface {
+	DoWork() (int, error)
+	GetChainId() int64
+}
 
 type ClaimWorker struct {
-	ChainId       int64
 	keyPair       *ecdsa.PrivateKey
 	address       *common.Address
 	evmHandler    blockchain.EvmHandler
+	ChainType     string
 	DelayForError int
+	Chain         models.Chain
 }
 
 func RunAllClaimWorker() error {
@@ -41,18 +48,19 @@ func RunAllClaimWorker() error {
 		logrus.WithError(err).Error("setupClaimWorkers fail")
 		return err
 	}
+	logrus.Info("claim workers count ", len(workers))
 	for _, worker := range workers {
-		go worker.Run()
+		go Run(*worker)
 	}
 	return nil
 }
 
-func (worker ClaimWorker) Run() {
+func Run(worker IClaimWorker) {
 	for {
-		sleepT, err := worker.doWork()
+		sleepT, err := worker.DoWork()
 		if err != nil {
 			logrus.WithError(err).
-				WithField("chainId", worker.ChainId).
+				WithField("chainId", worker.GetChainId()).
 				Error("unhandled claim worker error")
 			time.Sleep(time.Second)
 		} else if sleepT > 0 {
@@ -61,17 +69,20 @@ func (worker ClaimWorker) Run() {
 	}
 }
 
-func (worker ClaimWorker) doWork() (int, error) {
+func (worker ClaimWorker) GetChainId() int64 {
+	return worker.Chain.ChainId
+}
+func (worker ClaimWorker) DoWork() (int, error) {
 	// check whether there is a undergoing task
 	var pooledClaim models.ClaimPool
 	hasPooledClaim := true
-	if err := database.DB.Where("target_chain=?", worker.ChainId).
+	if err := database.DB.Where("target_chain=?", worker.Chain.Id).
 		Take(&pooledClaim).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			hasPooledClaim = false
 		} else {
 			logrus.WithError(err).
-				WithField("chainId", worker.ChainId).
+				WithField("chain", worker.Chain.Name).
 				Error("check pooled claim error")
 			return 0, err
 		}
@@ -82,18 +93,18 @@ func (worker ClaimWorker) doWork() (int, error) {
 	}
 	// Fetch cursor each time, in case an operator changes it directly in the database.
 	var claimCursor models.ClaimCursor
-	if err := database.DB.Where("target_chain=?", worker.ChainId).
+	if err := database.DB.Where("target_chain=?", worker.Chain.Id).
 		Take(&claimCursor).Error; err != nil {
 		return 5, err
 	}
 
 	var crossInfo models.CrossInfo
-	if err := database.DB.Where("target_chain = ? and id > ?", worker.ChainId, claimCursor.CrossInfoId).
+	if err := database.DB.Where("target_chain = ? and id > ?", worker.Chain.Id, claimCursor.CrossInfoId).
 		Order("id asc").
 		Take(&crossInfo).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			logrus.WithFields(logrus.Fields{
-				"chain": worker.ChainId,
+				"chain.id": worker.Chain.Id, "name": worker.Chain.Name,
 			}).Debug("no claim task")
 			return 5, nil
 		}
@@ -126,12 +137,13 @@ func (worker ClaimWorker) doWork() (int, error) {
 	return 0, nil
 }
 
-func setupClaimWorkers() ([]*ClaimWorker, error) {
-	var workers []*ClaimWorker
+func setupClaimWorkers() ([]*IClaimWorker, error) {
+	var workers []*IClaimWorker
 	var chains []models.Chain
 	if err := database.DB.Find(&chains).Error; err != nil {
 		return nil, err
 	}
+	logrus.Debug("chain count ", len(chains))
 	for _, chain := range chains {
 
 		if err := blockchain.AddChainClient(chain); err != nil {
@@ -140,7 +152,8 @@ func setupClaimWorkers() ([]*ClaimWorker, error) {
 
 		secret, err := models.GetSecret(chain.Id)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{"chain": chain.Id, "name": chain.Name}).Error("secret not found")
+			logrus.WithFields(logrus.Fields{"chain": chain.Id, "name": chain.Name}).
+				Error("secret not found")
 			return nil, err
 		}
 		// prepare claiming cursor
@@ -157,48 +170,116 @@ func setupClaimWorkers() ([]*ClaimWorker, error) {
 				Error("take claim cursor error")
 			return nil, err
 		}
-
-		// prepare private key
-		privateKey, address, err := blockchain.CreateKeyPair(secret.Private[2:])
-		if err != nil {
-			logrus.WithError(err).WithFields(logrus.Fields{
-				"chainId": chain.Id,
-			}).Error("create key pair error")
-			return nil, err
+		logrus.Debug("create claiming worker for chain ", chain.Name)
+		var claimWorker *IClaimWorker
+		var errTmp error
+		if chain.ChainType == models.EvmChain {
+			claimWorker, errTmp = createEvmWorker(chain, secret)
+		} else if chain.ChainType == models.CfxChain {
+			claimWorker, errTmp = createCfxWorker(chain, secret)
+		} else {
+			errTmp = fmt.Errorf("unsupported chain type [%v], id %v",
+				chain.ChainType, chain.Id)
 		}
-		evmHandler := blockchain.GetEvmHandler(chain.Id)
-
-		if secret.Address == "" {
-			if err := database.DB.Model(&secret).Where("id=?", secret.Id).
-				Update("address", address.Hex()).Error; err != nil {
-				logrus.WithError(err).WithFields(logrus.Fields{
-					"chainId": chain.Id, "secretId": secret.Id,
-				}).Error("update address for secret fail")
-				return nil, err
-			}
-			balance, err := evmHandler.Client.BalanceAt(context.Background(), *address, nil)
-			if err != nil {
-				logrus.WithError(err).WithFields(logrus.Fields{
-					"chainId": chain.Id, "address": *address,
-				}).Error("get balance fail")
-				return nil, err
-			}
-			if (*balance).Cmp(big.NewInt(0)) == 0 {
-				logrus.WithError(err).WithFields(logrus.Fields{
-					"chainId": chain.Id, "address": *address,
-				}).Fatal("balance is zero")
-			}
+		if errTmp != nil {
+			logrus.Debug("create worker fail, chain ", chain.Name)
+			return nil, errTmp
 		}
-
-		workers = append(workers, &ClaimWorker{
-			ChainId:       chain.Id,
-			keyPair:       privateKey,
-			address:       address,
-			evmHandler:    evmHandler,
-			DelayForError: 60 * 10, // delay 10 minutes
-		})
+		workers = append(workers, claimWorker)
 	}
 	return workers, nil
+}
+
+func createCfxWorker(chain models.Chain, secret models.Secret) (*IClaimWorker, error) {
+	cfxClient, err := sdk.NewClient(chain.Rpc)
+	if err != nil {
+		logrus.Debug("create cfx client fail")
+		return nil, err
+	}
+	cfxClient.SetNetworkId(uint32(chain.ChainId))
+	am := sdk.NewAccountManager("./keystore/", uint32(chain.ChainId))
+	cfxClient.SetAccountManager(am)
+
+	address, err := am.ImportKey(secret.Private, "")
+	if err == nil {
+		// things go well
+	} else if err == keystore.ErrAccountAlreadyExists {
+		// nothing
+	} else {
+		logrus.Debug("import cfx key fail")
+		return nil, err
+	}
+	logrus.WithFields(logrus.Fields{"chainId": chain.Id}).Info("cfx address is ", address.String())
+
+	balanceTmp, errGetBalance := cfxClient.GetBalance(address)
+	var balance *big.Int
+	if balanceTmp != nil {
+		balance = balanceTmp.ToInt()
+	}
+	if err := afterCreateAccount(secret, chain, address.String(), balance, errGetBalance); err != nil {
+		return nil, err
+	}
+	var worker IClaimWorker
+	worker = CfxClaimWorker{
+		Chain:         chain,
+		ChainId:       chain.ChainId,
+		address:       address,
+		CfxClient:     cfxClient,
+		DelayForError: 60 * 10,
+	}
+	return &worker, nil
+}
+
+func createEvmWorker(chain models.Chain, secret models.Secret) (*IClaimWorker, error) {
+	// prepare private key
+	privateKey, address, err := blockchain.CreateKeyPair(secret.Private[2:])
+	if err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"chainId": chain.ChainId,
+		}).Error("create key pair error")
+		return nil, err
+	}
+	evmHandler := blockchain.GetEvmHandler(chain.Id)
+	balance, errGetBalance := evmHandler.Client.BalanceAt(context.Background(), *address, nil)
+
+	if err := afterCreateAccount(secret, chain, address.Hex(), balance, errGetBalance); err != nil {
+		return nil, err
+	}
+	var claimWorker IClaimWorker
+	claimWorker = ClaimWorker{
+		Chain:         chain,
+		keyPair:       privateKey,
+		address:       address,
+		evmHandler:    evmHandler,
+		DelayForError: 60 * 10, // delay 10 minutes
+	}
+	return &claimWorker, nil
+}
+
+func afterCreateAccount(secret models.Secret, chain models.Chain,
+	accountStr string,
+	balance *big.Int, errGetBalance error) error {
+	if secret.Address == "" {
+		if err := database.DB.Model(&secret).Where("id=?", secret.Id).
+			Update("address", accountStr).Error; err != nil {
+			logrus.WithError(err).WithFields(logrus.Fields{
+				"chainId": chain.Id, "secretId": secret.Id,
+			}).Error("update address for secret fail")
+			return err
+		}
+		if errGetBalance != nil {
+			logrus.WithError(errGetBalance).WithFields(logrus.Fields{
+				"chainId": chain.Id, "address": accountStr,
+			}).Error("get balance fail")
+			return errGetBalance
+		}
+		if (*balance).Cmp(big.NewInt(0)) == 0 {
+			logrus.WithFields(logrus.Fields{
+				"chainId": chain.Id, "address": accountStr,
+			}).Fatal("balance is zero")
+		}
+	}
+	return nil
 }
 
 func (worker ClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64, error) {
@@ -209,7 +290,7 @@ func (worker ClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64, er
 		}).Error("querying CrossItems in DB fail")
 		return "", nil, err
 	}
-
+	logrus.Debug("cross item count ", len(items))
 	targetChain, err := models.GetChain(crossInfo.TargetChain)
 	if err != nil {
 		return "", nil, err
@@ -220,9 +301,10 @@ func (worker ClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64, er
 	var uris []string
 	for _, item := range items {
 		tokenIds = append(tokenIds, common.HexToHash(item.TokenId).Big())
-		amounts = append(tokenIds, common.HexToHash(item.Amount).Big())
+		amounts = append(amounts, common.HexToHash(item.Amount).Big())
 		uris = append(uris, item.Uri)
 	}
+	logrus.Debug("build token ids ", tokenIds)
 	request := vault.VaultCrossRequest{
 		Asset:          common.HexToAddress(crossInfo.Asset),
 		From:           common.HexToAddress(crossInfo.From),
@@ -236,8 +318,7 @@ func (worker ClaimWorker) Claim(crossInfo models.CrossInfo) (string, *uint64, er
 	}
 
 	evmHandler := blockchain.GetEvmHandler(crossInfo.TargetChain)
-
-	claimTxHash, nonce, err := blockchain.SendClaimTx(worker.keyPair, worker.address, targetChain.VaultAddr,
+	claimTxHash, nonce, err := blockchain.SendClaimTx(worker.keyPair, worker.address, targetChain,
 		big.NewInt(crossInfo.SourceChain), request, *evmHandler.Client)
 	if err != nil {
 		return "", nil, err
@@ -257,7 +338,7 @@ func (worker ClaimWorker) checkPooledClaim(claim models.ClaimPool) (int, error) 
 		)
 		if errors.Is(err, ethereum.NotFound) {
 			logrus.
-				WithFields(logrus.Fields{"chainId": worker.ChainId, "crossInfoId": claim.CrossInfoId,
+				WithFields(logrus.Fields{"chainDbId": worker.Chain.Id, "crossInfoId": claim.CrossInfoId,
 					"txnHash": claim.TxnHash}).
 				Info("receipt not found")
 			return 5, nil
@@ -276,7 +357,7 @@ func (worker ClaimWorker) sendClaimTx(claim models.ClaimPool) (int, error) {
 	if err := database.DB.Where("id=?", claim.CrossInfoId).
 		Take(&crossInfo).Error; err != nil {
 		logrus.WithError(err).
-			WithFields(logrus.Fields{"chainId": worker.ChainId, "crossInfoId": claim.CrossInfoId}).
+			WithFields(logrus.Fields{"chainDbId": worker.Chain.Id, "crossInfoId": claim.CrossInfoId}).
 			Error("querying cross info failed when sending claim tx")
 		return 0, err
 	}
@@ -300,7 +381,7 @@ func (worker ClaimWorker) sendClaimTx(claim models.ClaimPool) (int, error) {
 			Status:  nil,
 		}).Error; err != nil {
 		logrus.WithError(err).
-			WithFields(logrus.Fields{"chainId": worker.ChainId, "crossInfoId": claim.CrossInfoId}).
+			WithFields(logrus.Fields{"chain.Id": worker.Chain.Id, "crossInfoId": claim.CrossInfoId}).
 			Error("update claim info after sending tx fail")
 		return 0, err
 	}
@@ -309,6 +390,7 @@ func (worker ClaimWorker) sendClaimTx(claim models.ClaimPool) (int, error) {
 
 func (worker ClaimWorker) checkReceipt(claim models.ClaimPool, receipt *types.Receipt) (int, error) {
 	if receipt.Status == 1 {
+		logrus.Debug("claiming succeeded ", claim.TxnHash)
 		if err := moveClaimFromPoolToHistory(claim, receipt.Status, "OK"); err != nil {
 			return 0, err
 		}
@@ -321,7 +403,7 @@ func (worker ClaimWorker) checkReceipt(claim models.ClaimPool, receipt *types.Re
 
 func (worker ClaimWorker) notifyError(errorInfo string, txnHash string) {
 	logrus.WithFields(logrus.Fields{
-		"chainId": worker.ChainId, "tx": txnHash, "errorInfo": errorInfo,
+		"chain.Id": worker.Chain.Id, "tx": txnHash, "errorInfo": errorInfo,
 	}).Error("claim transaction fail")
 }
 

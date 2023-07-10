@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/sirupsen/logrus"
 	"github.com/tree-graph/bridge-service/helpers"
 	"github.com/tree-graph/bridge-service/infra/blockchain"
@@ -130,7 +129,9 @@ func runRequestWorker() (int, error) {
 		logEntry.WithError(blockErr).Error("fetch block fail")
 		return 1, nil
 	}
-	crossInfoArr, crossItemsArr := BuildCrossInfo(block, parsedLogs, req.ChainId)
+	blockTime := time.Unix(int64(block.Time()), 0)
+
+	crossInfoArr, crossItemsArr := BuildCrossInfo(blockTime, parsedLogs, req.ChainId)
 	allItemCount := 0
 	allTxErr := database.DB.Transaction(func(tx *gorm.DB) error {
 		if infoE := tx.Create(crossInfoArr).Error; infoE != nil {
@@ -179,8 +180,7 @@ func saveAsInvalidHash(req models.CrossRequest, config models.Config, result str
 	})
 }
 
-func BuildCrossInfo(block *types.Block, parseLogs []*vault.VaultCrossRequest, chainId int64) ([]models.CrossInfo, [][]models.CrossItem) {
-	blockTime := time.Unix(int64(block.Time()), 0)
+func BuildCrossInfo(blockTime time.Time, parseLogs []*vault.VaultCrossRequest, chainId int64) ([]models.CrossInfo, [][]models.CrossItem) {
 	var crossInfoArr []models.CrossInfo
 	var crossItemsArr = make([][]models.CrossItem, len(parseLogs))
 
@@ -188,12 +188,12 @@ func BuildCrossInfo(block *types.Block, parseLogs []*vault.VaultCrossRequest, ch
 		var crossInfo = models.CrossInfo{
 			SourceChain:    chainId,
 			TxnHash:        crossLog.Raw.TxHash.Hex(),
+			BlockNumber:    crossLog.Raw.BlockNumber,
 			Asset:          crossLog.Asset.Hex(),
 			From:           crossLog.From.Hex(),
 			TargetChain:    crossLog.ToChainId.Int64(),
 			TargetContract: crossLog.TargetContract.Hex(),
 			UserNonce:      crossLog.UserNonce.Int64(),
-			BlockNumber:    crossLog.Raw.BlockNumber,
 			BlockTime:      &blockTime,
 		}
 		crossInfoArr = append(crossInfoArr, crossInfo)

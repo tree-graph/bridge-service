@@ -12,8 +12,8 @@ import (
 var addChainCmd = &cobra.Command{
 	Use:   "addChain",
 	Short: "Add a chain",
-	Long:  `Add a chain, args: chainId name rpc`,
-	Args:  cobra.ExactArgs(3),
+	Long:  `Add a chain, args: chainId name rpc <evm|cfx>`,
+	Args:  cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
 		run(args)
 	},
@@ -21,9 +21,9 @@ var addChainCmd = &cobra.Command{
 
 func run(args []string) {
 	database.Init()
-	id, _ := strconv.ParseInt(args[0], 10, 64)
+	chainId, _ := strconv.ParseInt(args[0], 10, 64)
 	var bean = models.Chain{
-		Id: id, Name: args[1], Rpc: args[2],
+		ChainId: chainId, Name: args[1], Rpc: args[2], ChainType: args[3],
 	}
 	if err := database.GetDB().Create(&bean).Error; err != nil {
 		logrus.WithError(err).Error("config failed")
