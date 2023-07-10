@@ -26,3 +26,7 @@ The bridge must prevent replaying claiming transactions. To archive it,
 the bridge maintains nonce records on source chains, one nonce for each user on each destination chain.
 The bridge increases it when user crossing a NFT.
 On the destination chain, the bridge checks that nonce, reverts transactions with mismatched claiming nonce.
+
+
+## Consortium plugin
+To support different chains, we use plugin mechanism. A conflux consortium plugin in java is available [here](https://github.com/tree-graph/bridge-plugin-treegraph/tree/fetch-event).

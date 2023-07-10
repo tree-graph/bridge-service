@@ -72,6 +72,9 @@ Golang event fetching worker will track crossing request for chains marked with 
 Golang claiming worker will handle requests for chains  marked with `enabled` `1`.  
 `./main worker -D`
 
+## Run plugin application
+Event fetcher and claiming worker for conflux consortium is [here](https://github.com/tree-graph/bridge-plugin-treegraph/tree/fetch-event).
+
 ## About the first test crossing
 We have sent A test crossing request [here](deploy.md).
 If everything goes well, the bridge should send a claiming transaction, and the pegged 
