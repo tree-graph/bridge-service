@@ -60,7 +60,11 @@ The testing step [here](deploy.md) will show the epoch number, use its value-1 s
 - `updated_at` use `now()`
 
 SQL:  
-`insert into chain_cursors values(1001,129820270,0,now());`
+`insert into chain_cursors values(1001,129820270,0,now());`  
+`insert into chain_cursors values(1029,129820270,0,now());` 
+ 
+`insert into claim_cursors values(1001,0,now());`
+`insert into claim_cursors values(1029,0,now());`  
 
 ### config secrets/private key
 The table `secrets` keeps private keys used when sending claiming transactions.
@@ -121,10 +125,10 @@ we should follow steps below(use 1001 and 1029 for logical chain ids):
                      --local cfx:xxx(erc721b on 1029)
                      --pegged
                      ``` on consortium chain, to register routes.
-5. run `./main dev -t  --tid 91 --cid 1029` on core-space testnet, 
+5. run `./main dev -t  --tid 91 --cid 1029 --remote cfx:xxx(erc721b on 1029)` on core-space testnet, 
 to mint a nft with id 91, and cross it to chain 1029.
 6. wait java application for consortium chain claiming.
-7. run `./main dev -t  --tid 91 --cid 1001 -r` on consortium chain, 
+7. run `./main dev -t  --tid 91 --cid 1001 -r --remote cfxtest(erc721a on 1001)` on consortium chain, 
 to cross that nft back to chain 1001.
 8. wait golang service claiming.
 
