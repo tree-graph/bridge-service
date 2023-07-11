@@ -1,17 +1,6 @@
 #Cross-chain bridge service
 
-## Add hardhat local chain
-
-```
-go run main.go addChain 31337 hardhat http://127.0.0.1:8545 evm
-```
-
-## Start web server
-```
-go run main.go server
-```
-
-## Start parsing request worker
-```
-go run main.go worker
-```
+Please follow documents bellow to run a bi-direction, multi-chain crossing NFT test.  
+1. [Overview](docs/overview.md)
+2. [Deployment](./docs/deploy.md)
+3. [Operation](./docs/operate.md)
