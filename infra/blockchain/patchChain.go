@@ -9,7 +9,7 @@ import (
 Differences between Consortium chain and Conflux Chain are here.
 Different branch could changes code here, to avoid conflicts.
 */
-func PatchChain(client sdk.Client) uint32 {
+func PatchChain(client *sdk.Client) uint32 {
 	forceNetworkId := uint32(0)
 	// consortium chain
 	//client.SetNetworkId(uint32(forceNetworkId))

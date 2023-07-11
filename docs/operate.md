@@ -4,6 +4,8 @@ Bridge operators/developers can interact with their bridges for deployment, main
 ## config.yml
 Config.yml example:
 ```
+PK: EEFF...
+RPC: http...
 log:
   level: DEBUG
   forceColor: True
@@ -18,6 +20,11 @@ store:
     password: *
     database: *
 ```
+
+## generate database schema
+Run the application and stop after a few seconds.
+- `./main server`
+- `CTR+C`
 
 ## config database
 Each chain must have a Token vault contract, get it from [here](deploy.md).
@@ -36,9 +43,12 @@ The table `chains`:
 - `created_at` use `now()`
 - `updated_at` use `now()`
 - `enabled` the status of the chain, use `1` if the golang service could take care of the chain,
-use `0` if golang service could not but other application such as java-plugin could. 
-Event it's `0`, do not remove it, plugin application shall fetch it.
-The operator must config involved chains here.
+use `0` if golang service could not run on the chain but other application such as java-plugin could. 
+Even if it's `0`, do not delete it, the plugin application will get it.
+The operator must config all involved chains here.
+
+SQL:
+`insert into chains values(0,0,'example','vault_addr','rpc url','chain_type:evm/cfx',5,1,now(),now());`
 
 ### config cursor for the event fetching
 The table `chain_cursors` tracks the progress of fetching event on each chain. 
@@ -48,6 +58,9 @@ The testing step [here](deploy.md) will show the epoch number, use its value-1 s
 - `block` the last processed block/epoch of the chain.
 - `latest_block` the bridge take care of this field, use 0 for manual operation.
 - `updated_at` use `now()`
+
+SQL:  
+`insert into chain_cursors values(1001,129820270,0,now());`
 
 ### config secrets/private key
 The table `secrets` keeps private keys used when sending claiming transactions.
@@ -60,6 +73,9 @@ For security reasons we separate it from table `chains`.
 - `created_at` use `now()`
 - `updated_at` use `now()`
 
+SQL:  
+`insert into secrets values(1001,1,'0x...','','comment', now(),now());`
+
 ## Run the server
 Run the web server, which expose api for bridge-plugin and frontend(later).  
 `./main server`
@@ -67,10 +83,15 @@ Run the web server, which expose api for bridge-plugin and frontend(later).
 ## Run event fetcher
 Golang event fetching worker will track crossing request for chains marked with `enabled` `1`. 
 `./main worker`
+If you have set a right cursor in the database, it will find out the crossing request we had made in 
+the step `Deploy pegged contract for a test` very quickly.
 
 ## Run claiming worker
 Golang claiming worker will handle requests for chains  marked with `enabled` `1`.  
-`./main worker -D`
+
+`./main worker -c` 
+
+If things go well, the bridge will send a claiming request quickly, and complete the test mentioned above.
 
 ## Run plugin application
 Event fetcher and claiming worker for conflux consortium is [here](https://github.com/tree-graph/bridge-plugin-treegraph/tree/fetch-event).
@@ -87,17 +108,18 @@ Please refer to its docs.
 After archiving success on one chain, move on to multiple chains.
 For example, we want to cross NFT on the conflux core-space testnet to a conflux consortium chain,
 we should follow steps below(use 1001 and 1029 for logical chain ids):  
-1. run `./main dev -t -D --tid 1 --cid 1001` on core-space testnet
+1. run `./main dev -t -D --tid 1 --cid 1001` on core-space testnet, skip it if you did it in the deployment. 
 2. run `./main dev -t -D --tid 1 --cid 1029` on consortium
 3. run ```
 ./main dev --register --cid 1029 \
                      --local cfxtest:xxx(erc721a on 1001) \
                      --remote cfx:xxx(erc721b on 1029)
                      ``` on core-space testnet, to register routes.
-4. run ```
+4. under consortium folder, run ```
 ./main dev --register --cid 1001 \
                      --remote cfxtest:xxx(erc721a on 1001) \
                      --local cfx:xxx(erc721b on 1029)
+                     --pegged
                      ``` on consortium chain, to register routes.
 5. run `./main dev -t  --tid 91 --cid 1029` on core-space testnet, 
 to mint a nft with id 91, and cross it to chain 1029.

@@ -55,7 +55,7 @@ func cfxCore(cmd *cobra.Command) {
 		logrus.Fatal("create cfx core client fail:", err.Error())
 		return
 	}
-	forceNetworkId := blockchain.PatchChain(*client)
+	forceNetworkId := blockchain.PatchChain(client)
 	am := sdk.NewAccountManager("./keystore/", forceNetworkId)
 	client.SetAccountManager(am)
 	if epochNumber(err, client) {

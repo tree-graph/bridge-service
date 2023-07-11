@@ -1,12 +1,20 @@
 # Deployment
-Deployment diffs on different chains.
+There are differences in the deployment on different chains.
 
 ## build first
-`go build main.go` to get a binary
+`go build main.go` to get a binary.
+Setup `goproxy` for a limited network.
+```
+export GO111MODULE=on
+export GOPROXY=https://goproxy.cn
+```
 
 ## config.yml
-- `PK` : the private key to deploy the bridge, without `0x` prefix.
-- `RPC`: the json-rpc url to access the chain.
+Create `config.yml` under repository's root, with contents below:
+- `PK` the private key to deploy the bridge, without `0x` prefix.
+- `RPC` the json-rpc url to access the chain.
+
+It costs about 30 CFX to deploy, make sure the account have enough balance.
 
 ## deploy token vault
 ### Conflux core-space
@@ -22,21 +30,22 @@ with different sdk version to deploy.
 We may have more operations on consortium chain later, so we need a different directory, even clone this repository to another folder.
 
 - Checkout branch `0628/consortium`
-- `mkdir` consortium 
+- `mkdir consortium` 
+- `go mod tidy`
 - `go build -o consortium/main main.go`
 - `cd consortium`
 - `cp ../config.yml .` or create one
 - change RPC/PK in config.yml
 - `./main dev -D`
-
+- `cd ..` back to repository root
 The other things are the same with conflux core-space.
 
 ### EVM compatible chain
 Use instruction in the bridge-contracts repository to deploy. Those tools refer to hardhat and ethers, in typescript/javascript.
 
 ## Deploy pegged contract for a test
-We will test the bridge on the same chain at first.
-For golang supported chains,  
+We will first test the bridge on the same chain, and then between two different chains.
+For the conflux core-space(make sure you are under the repository root, not the consortium folder):
 
 `./main dev -t -D --tid 1 --cid 1001`
 - `dev` it's a dev command

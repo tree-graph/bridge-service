@@ -1,0 +1,15 @@
+PK: xxx without 0x prefix
+RPC: http(s)://....
+log:
+  level: DEBUG
+  forceColor: True
+  file: ./logs/bridge.log
+
+api:
+  endpoint: 0.0.0.0:8001
+store:
+  mysql:
+    host: 127.0.0.1:3306
+    username: *
+    password: *
+    database: *
